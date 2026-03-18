@@ -1,0 +1,11 @@
+.git
+.idea
+build
+build-debug
+build-lint
+build-release
+build-test
+build-typecheck
+cmake-build-debug
+cmake-build-release
+dist

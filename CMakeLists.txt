@@ -15,19 +15,17 @@ project(Duel6r)
 # Platform detection
 #########################################################################
 
-if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    EXEC_PROGRAM(cat ARGS "/proc/cpuinfo" OUTPUT_VARIABLE CPUINFO)
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" D6R_SYSTEM_PROCESSOR)
 
-    STRING(REGEX REPLACE "^.*(arm).*$" "\\1" ARM_THERE ${CPUINFO})
-    STRING(COMPARE EQUAL "arm" "${ARM_THERE}" ARM_TRUE)
-    if (ARM_TRUE)
-        set(D6R_PLATFORM "arm")
-    else (ARM_TRUE)
-        set(D6R_PLATFORM "x86")
-    endif (ARM_TRUE)
-else (CMAKE_SYSTEM_NAME MATCHES "Linux")
+if (D6R_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|i[3-6]86)$")
     set(D6R_PLATFORM "x86")
-endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+elseif (D6R_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+    set(D6R_PLATFORM "arm64")
+elseif (D6R_SYSTEM_PROCESSOR MATCHES "^arm")
+    set(D6R_PLATFORM "arm")
+else ()
+    set(D6R_PLATFORM "generic")
+endif ()
 
 #########################################################################
 # Compiler flags
@@ -43,7 +41,6 @@ endif (MSVC)
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++17")
     if (D6R_PLATFORM STREQUAL "x86")
-
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -msse2")
     elseif (D6R_PLATFORM STREQUAL "arm")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfloat-abi=hard -mlittle-endian -munaligned-access")

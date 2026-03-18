@@ -17,6 +17,16 @@ The game is written using the following technologies:
 
 There is a **builtin quake-style console** that can be used to modify game aspects at runtime.
 
+## Docker build
+
+You can build a release bundle with Docker as the only host dependency:
+
+```sh
+mkdir -p dist && cid="$(docker create "$(docker build -q .)")" && docker cp "$cid:/release/." dist && docker rm "$cid" >/dev/null
+```
+
+The command writes a runnable release layout to `dist/`, including the `duel6r` executable and the required runtime assets (`data/`, `levels/`, `profiles/`, `shaders/`, `sound/`, `textures/`).
+
 ## Supported platforms
 
 The game has been tested on the following platforms:
