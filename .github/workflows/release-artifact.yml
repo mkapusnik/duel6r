@@ -10,19 +10,30 @@ permissions:
   contents: write
 
 jobs:
-  publish-docker-release-artifact:
-    runs-on: ubuntu-latest
+  build-release-artifact:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux
+            runs-on: ubuntu-latest
+          - target: windows
+            runs-on: windows-latest
+
+    runs-on: ${{ matrix.runs-on }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
       - name: Build Docker release image
+        if: matrix.target == 'linux'
         id: docker-image
         run: |
           echo "image=$(docker build -q .)" >> "$GITHUB_OUTPUT"
 
-      - name: Export release bundle
+      - name: Export Linux release bundle
+        if: matrix.target == 'linux'
         run: |
           mkdir -p dist
           cid="$(docker create "${{ steps.docker-image.outputs.image }}")"
@@ -31,16 +42,63 @@ jobs:
           docker rm "$cid" >/dev/null
           trap - EXIT
 
+      - name: Set up MSYS2
+        if: matrix.target == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-SDL2_image
+            mingw-w64-ucrt-x86_64-SDL2_mixer
+            mingw-w64-ucrt-x86_64-SDL2_ttf
+            mingw-w64-ucrt-x86_64-glew
+            mingw-w64-ucrt-x86_64-lua
+
+      - name: Build Windows release bundle
+        if: matrix.target == 'windows'
+        shell: msys2 {0}
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
+          cmake --build build -j"$(nproc)"
+
+          mkdir -p dist
+          cp build/duel6r.exe dist/duel6r.exe
+          cp -R resources/* dist
+
+          ldd build/duel6r.exe | awk '/\/ucrt64\/bin\// { print $3 }' | sort -u | while read -r dll; do
+            cp "$dll" dist/
+          done
+
       - name: Package release artifact
         id: package
+        shell: bash
+        env:
+          ARCHIVE_SUFFIX: ${{ matrix.target }}
         run: |
-          archive_name="duel6r-${GITHUB_REF_NAME}-linux.zip"
+          safe_ref="${GITHUB_REF_NAME//\//-}"
+          archive_name="duel6r-${safe_ref}-${ARCHIVE_SUFFIX}.zip"
           mkdir -p artifact
           cp -a dist artifact/duel6r
-          (
-            cd artifact
-            zip -r "../${archive_name}" duel6r
-          )
+
+          ARCHIVE_NAME="$archive_name" python - <<'PY'
+          import os
+          import zipfile
+
+          archive_name = os.environ["ARCHIVE_NAME"]
+          root = os.path.join("artifact", "duel6r")
+
+          with zipfile.ZipFile(archive_name, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+              for current_root, _, files in os.walk(root):
+                  for file_name in files:
+                      path = os.path.join(current_root, file_name)
+                      archive.write(path, os.path.relpath(path, "artifact"))
+          PY
+
           echo "archive_name=${archive_name}" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
@@ -50,9 +108,21 @@ jobs:
           path: ${{ steps.package.outputs.archive_name }}
           if-no-files-found: error
 
-      - name: Publish GitHub release asset
-        if: startsWith(github.ref, 'refs/tags/')
+  publish-github-release-assets:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build-release-artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.package.outputs.archive_name }}
+          files: |
+            release-assets/*.zip
           generate_release_notes: true
