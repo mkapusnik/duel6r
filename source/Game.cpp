@@ -25,16 +25,48 @@
 * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "Sound.h"
-#include "WorldRenderer.h"
 #include "Game.h"
+#include "LocalGameServerTransport.h"
 #include "Menu.h"
 #include "GameMode.h"
 
 namespace Duel6 {
+    namespace {
+        Uint32 readControllerState(const PlayerControls &controls) {
+            Uint32 controllerState = 0;
+            if (controls.getLeft().isPressed()) {
+                controllerState |= Player::ButtonLeft;
+            }
+            if (controls.getRight().isPressed()) {
+                controllerState |= Player::ButtonRight;
+            }
+            if (controls.getUp().isPressed()) {
+                controllerState |= Player::ButtonUp;
+            }
+            if (controls.getDown().isPressed()) {
+                controllerState |= Player::ButtonDown;
+            }
+            if (controls.getShoot().isPressed()) {
+                controllerState |= Player::ButtonShoot;
+            }
+            if (controls.getPick().isPressed()) {
+                controllerState |= Player::ButtonPick;
+            }
+            if (controls.getStatus().isPressed()) {
+                controllerState |= Player::ButtonStatus;
+            }
+            return controllerState;
+        }
+    }
+
     Game::Game(AppService &appService, GameResources &resources, GameSettings &settings)
-            : appService(appService), resources(resources), settings(settings), worldRenderer(appService, *this),
-              playedRounds(0) {}
+            : appService(appService), resources(resources), settings(settings),
+              serverTransport(std::make_unique<LocalGameServerTransport>(*this, appService, resources, settings)),
+              worldRenderer(appService, *this), menu(nullptr) {
+        serverTransport->getServer().setOnRoundEnd([this]() {
+            onRoundEnd();
+        });
+    }
 
     void Game::beforeStart(Context *prevContext) {
         SDL_ShowCursor(SDL_DISABLE);
@@ -45,21 +77,37 @@ namespace Duel6 {
     }
 
     void Game::render() const {
+        if (!serverTransport->getServer().hasRound()) {
+            return;
+        }
         worldRenderer.render();
     }
 
     void Game::update(Float32 elapsedTime) {
+        if (!serverTransport->getServer().hasRound()) {
+            return;
+        }
+
         if (getRound().isOver()) {
             if (!getRound().isLast()) {
                 nextRound();
-
             }
         } else {
-            getRound().update(elapsedTime);
+            serverTransport->submitPlayerInputs(collectPlayerInputs());
+            serverTransport->update(elapsedTime);
+            appService.getVideo().getRenderer().setGlobalTime(getRound().getWorld().getTime());
+            updatePlayerCameras();
         }
     }
 
     void Game::keyEvent(const KeyPressEvent &event) {
+        if (!serverTransport->getServer().hasRound()) {
+            if (event.getCode() == SDLK_ESCAPE) {
+                close();
+            }
+            return;
+        }
+
         if (event.getCode() == SDLK_ESCAPE && (isOver() || event.withShift())) {
             close();
             return;
@@ -79,7 +127,19 @@ namespace Duel6 {
             }
         }
 
-        getRound().keyEvent(event);
+        if (event.getCode() == SDLK_F2 && getPlayers().size() < 5) {
+            switchScreenMode();
+        }
+
+        if (event.getCode() == SDLK_F4) {
+            settings.setShowRanking(!settings.isShowRanking());
+        }
+
+        if (event.getCode() == SDLK_F10) {
+            Image image = appService.getVideo().getRenderer().makeScreenshot();
+            std::string name = image.saveScreenshot();
+            appService.getConsole().printLine(Format("Screenshot saved to {0}") << name);
+        }
     }
 
     void Game::textInputEvent(const TextInputEvent &event) {}
@@ -94,81 +154,168 @@ namespace Duel6 {
 
     void Game::joyDeviceRemovedEvent(const JoyDeviceRemovedEvent &event) {}
 
-    void Game::start(const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
+    void Game::start(const std::vector<GamePlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
                      const std::vector<Size> &backgrounds, ScreenMode screenMode, Int32 screenZoom,
                      GameMode &gameMode) {
-        Console &console = appService.getConsole();
-        console.printLine("\n=== Starting new game ===");
-        console.printLine(Format("...Rounds: {0}") << settings.getMaxRounds());
-        TextureManager &textureManager = appService.getTextureManager();
-        players.clear();
-
-        for (auto &skin : skins) {
-            textureManager.dispose(skin.getTexture());
-        }
-        skins.clear();
-
-        Size playerIndex = 0;
-        players.reserve(playerDefinitions.size());
-        playerAnimations = std::make_unique<PlayerAnimations>(resources.getPlayerAnimation());
-        for (const PlayerDefinition &playerDef : playerDefinitions) {
-            console.printLine(Format("...Generating player for person: {0}") << playerDef.getPerson().getName());
-            skins.push_back(PlayerSkin(playerDef.getColors(), textureManager, *playerAnimations));
-            players.emplace_back(
-                    playerDef.getPerson(), skins.back(), playerDef.getSounds(), playerDef.getControls());
-            playerIndex++;
+        localPlayerControls.clear();
+        localPlayerControls.reserve(playerDefinitions.size());
+        for (const GamePlayerDefinition &playerDef : playerDefinitions) {
+            localPlayerControls.push_back(&playerDef.getControls());
         }
 
-        this->levels = levels;
-        std::shuffle(this->levels.begin(), this->levels.end(), Math::randomEngine);
-
-        this->backgrounds = backgrounds;
-        this->gameMode = &gameMode;
         settings.setScreenMode(screenMode);
         settings.setScreenZoom(screenZoom);
-        gameMode.initializeGame(*this, players, settings.isQuickLiquid(), settings.isGlobalAssistances());
+        displayScoreTab = false;
+        serverTransport->start(playerDefinitions, levels, backgrounds, gameMode);
         startRound();
     }
 
     void Game::startRound() {
-        currentRound = playedRounds;
-        displayScoreTab = false;
-
-        bool shuffle = settings.getLevelSelectionMode() == LevelSelectionMode::Shuffle;
-        Int32 level = shuffle ? playedRounds % Int32(levels.size()) : Math::random(Int32(levels.size()));
-        const std::string levelPath = levels[level];
-        bool mirror = Math::random(2) == 0;
-
-        Console &console = appService.getConsole();
-        console.printLine(Format("\n===Loading level {0}===") << levelPath);
-        console.printLine(Format("...Parameters: mirror: {0}") << mirror);
-
-        round = std::make_unique<Round>(*this, playedRounds, levelPath, mirror);
-        round->setOnRoundEnd([this]() {
-            onRoundEnd();
-        });
-        round->start();
-        worldRenderer.prerender();
+        prepareRoundClientView();
     }
 
     void Game::endRound() {
-        round->end();
+        serverTransport->endRound();
     }
 
     void Game::onRoundEnd() {
-        playedRounds++;
-        if (round->isLast()) {
-            getMode().updateElo(players);
+        if (menu != nullptr) {
+            menu->savePersonData();
         }
-        menu->savePersonData();
     }
 
     void Game::nextRound() {
-        endRound();
+        displayScoreTab = false;
+        serverTransport->startNextRound();
         startRound();
     }
 
+    const std::vector<Size> &Game::getBackgrounds() const {
+        return serverTransport->getServer().getBackgrounds();
+    }
+
+    std::vector<Player> &Game::getPlayers() {
+        return serverTransport->getServer().getPlayers();
+    }
+
+    const std::vector<Player> &Game::getPlayers() const {
+        return serverTransport->getServer().getPlayers();
+    }
+
+    Round &Game::getRound() {
+        return serverTransport->getServer().getRound();
+    }
+
+    const Round &Game::getRound() const {
+        return serverTransport->getServer().getRound();
+    }
+
+    Int32 Game::getPlayedRounds() const {
+        return serverTransport->getServer().getPlayedRounds();
+    }
+
+    void Game::setPlayedRounds(Int32 playedRounds) {
+        serverTransport->getServer().setPlayedRounds(playedRounds);
+    }
+
     Int32 Game::getCurrentRound() const {
-        return currentRound;
+        return serverTransport->getServer().getCurrentRound();
+    }
+
+    bool Game::isOver() const {
+        return serverTransport->getServer().isOver();
+    }
+
+    GameMode &Game::getMode() {
+        return serverTransport->getServer().getMode();
+    }
+
+    const GameMode &Game::getMode() const {
+        return serverTransport->getServer().getMode();
+    }
+
+    void Game::prepareRoundClientView() {
+        if (!serverTransport->getServer().hasRound()) {
+            return;
+        }
+
+        displayScoreTab = false;
+        getRound().getWorld().getLevelRenderData().setScreenMode(settings.getScreenMode());
+        getRound().getWorld().getLevelRenderData().generateFaces();
+        updatePlayerViews();
+        updatePlayerCameras();
+        appService.getVideo().getRenderer().setGlobalTime(getRound().getWorld().getTime());
+        worldRenderer.prerender();
+    }
+
+    void Game::splitScreenView(Player &player, Int32 x, Int32 y) const {
+        const Video &video = appService.getVideo();
+        PlayerView view(x, y, video.getScreen().getClientWidth() / 2 - 4, video.getScreen().getClientHeight() / 2 - 4);
+        player.setView(view);
+    }
+
+    void Game::updatePlayerViews() {
+        const Video &video = appService.getVideo();
+        World &world = getRound().getWorld();
+        std::vector<Player> &players = world.getPlayers();
+
+        for (Player &player : players) {
+            player.prepareCam(video, settings.getScreenMode(), settings.getScreenZoom(), world.getLevel().getWidth(),
+                              world.getLevel().getHeight());
+        }
+
+        if (settings.getScreenMode() == ScreenMode::FullScreen) {
+            for (Player &player : players) {
+                player.setView(PlayerView(0, 0, video.getScreen().getClientWidth(), video.getScreen().getClientHeight()));
+            }
+            return;
+        }
+
+        if (players.size() == 2) {
+            splitScreenView(players[0], video.getScreen().getClientWidth() / 4 + 2, 2);
+            splitScreenView(players[1], video.getScreen().getClientWidth() / 4 + 2,
+                            video.getScreen().getClientHeight() / 2 + 2);
+        }
+
+        if (players.size() == 3) {
+            splitScreenView(players[0], 2, 2);
+            splitScreenView(players[1], video.getScreen().getClientWidth() / 2 + 2, 2);
+            splitScreenView(players[2], video.getScreen().getClientWidth() / 4 + 2,
+                            video.getScreen().getClientHeight() / 2 + 2);
+        }
+
+        if (players.size() == 4) {
+            splitScreenView(players[0], 2, 2);
+            splitScreenView(players[1], video.getScreen().getClientWidth() / 2 + 2, 2);
+            splitScreenView(players[2], 2, video.getScreen().getClientHeight() / 2 + 2);
+            splitScreenView(players[3], video.getScreen().getClientWidth() / 2 + 2,
+                            video.getScreen().getClientHeight() / 2 + 2);
+        }
+    }
+
+    void Game::updatePlayerCameras() {
+        if (settings.getScreenMode() != ScreenMode::SplitScreen || !serverTransport->getServer().hasRound()) {
+            return;
+        }
+
+        const Level &level = getRound().getWorld().getLevel();
+        for (Player &player : getPlayers()) {
+            player.updateCamera(level.getWidth(), level.getHeight());
+        }
+    }
+
+    std::vector<Uint32> Game::collectPlayerInputs() const {
+        std::vector<Uint32> controllerStates;
+        controllerStates.reserve(localPlayerControls.size());
+        for (const PlayerControls *controls : localPlayerControls) {
+            controllerStates.push_back(readControllerState(*controls));
+        }
+        return controllerStates;
+    }
+
+    void Game::switchScreenMode() {
+        settings.setScreenMode((settings.getScreenMode() == ScreenMode::FullScreen) ? ScreenMode::SplitScreen
+                                                                                    : ScreenMode::FullScreen);
+        prepareRoundClientView();
     }
 }

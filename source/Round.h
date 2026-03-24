@@ -32,7 +32,6 @@
 #include <queue>
 #include "Player.h"
 #include "World.h"
-#include "SysEvent.h"
 
 namespace Duel6 {
     class Game;
@@ -61,7 +60,9 @@ namespace Duel6 {
 
         void end();
 
-        void keyEvent(const KeyPressEvent &event);
+        World &getWorld() {
+            return world;
+        }
 
         const World &getWorld() const {
             return world;
@@ -99,12 +100,6 @@ namespace Duel6 {
         void scriptEnd();
 
         void checkWinner();
-
-        void setPlayerViews();
-
-        void splitScreenView(Player &player, Int32 x, Int32 y);
-
-        void switchScreenMode();
     };
 }
 

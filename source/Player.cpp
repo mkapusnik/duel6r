@@ -49,12 +49,11 @@ namespace Duel6 {
     // Very important fun aspect!
     static const float SHOT_FORCE_FACTOR = 0.05f;
 
-    Player::Player(Person &person, const PlayerSkin &skin, const PlayerSounds &sounds, const PlayerControls &controls)
+    Player::Player(Person &person, const PlayerSkin &skin, const PlayerSounds &sounds)
             : person(person),
               skin(skin),
               animations(skin.getAnimations()),
               sounds(sounds),
-              controls(controls),
               orientation(Orientation::Left) {
         camera.rotate(180.0, 0.0, 0.0);
     }
@@ -95,6 +94,7 @@ namespace Duel6 {
         indicators.getBullets().show(4.0f);
 
         roundStartTime = clock();
+        controllerState = 0;
         getPerson().addGames(1);
     }
 
@@ -376,32 +376,7 @@ namespace Duel6 {
         }
     }
 
-    void Player::updateControllerStatus() {
-        controllerState = 0;
-        if (controls.getLeft().isPressed()) {
-            controllerState |= ButtonLeft;
-        }
-        if (controls.getRight().isPressed()) {
-            controllerState |= ButtonRight;
-        }
-        if (controls.getUp().isPressed()) {
-            controllerState |= ButtonUp;
-        }
-        if (controls.getDown().isPressed()) {
-            controllerState |= ButtonDown;
-        }
-        if (controls.getShoot().isPressed()) {
-            controllerState |= ButtonShoot;
-        }
-        if (controls.getPick().isPressed()) {
-            controllerState |= ButtonPick;
-        }
-        if (controls.getStatus().isPressed()) {
-            controllerState |= ButtonStatus;
-        }
-    }
-
-    void Player::update(World &world, ScreenMode screenMode, Float32 elapsedTime) {
+    void Player::update(World &world, Float32 elapsedTime) {
         checkWater(world, elapsedTime);
         if (isAlive()) {
             world.getBonusList().checkBonus(*this);
@@ -440,10 +415,6 @@ namespace Duel6 {
             if ((tempSkinDuration -= elapsedTime) <= 0) {
                 switchToOriginalSkin();
             }
-        }
-
-        if (screenMode == ScreenMode::SplitScreen) {
-            updateCam(world.getLevel().getWidth(), world.getLevel().getHeight());
         }
 
         timeSinceHit += elapsedTime;
@@ -558,11 +529,11 @@ namespace Duel6 {
         camera.setPosition(position);
 
         if (screenMode == ScreenMode::SplitScreen) {
-            updateCam(levelSizeX, levelSizeY);
+            updateCamera(levelSizeX, levelSizeY);
         }
     }
 
-    void Player::updateCam(Int32 levelSizeX, Int32 levelSizeY) {
+    void Player::updateCamera(Int32 levelSizeX, Int32 levelSizeY) {
         Float32 mX = 0.0, mY = 0.0;
         Vector centre = getCentre();
         Vector position = camera.getPosition();

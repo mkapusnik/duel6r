@@ -46,7 +46,7 @@ namespace Duel6 {
         return TEAMS[playerTeam];
     }
 
-    void TeamDeathMatch::initializePlayers(std::vector<Game::PlayerDefinition> &definitions) {
+    void TeamDeathMatch::initializePlayers(std::vector<GamePlayerDefinition> &definitions) {
         Int32 index = 0;
         for (auto &definition : definitions) {
             const Team &team = getPlayerTeam(index);

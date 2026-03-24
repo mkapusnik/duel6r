@@ -116,10 +116,14 @@ set(D6R_SOURCES
         source/Formatter.h
         source/Game.cpp
         source/Game.h
+        source/GamePlayerDefinition.h
         source/GameException.h
         source/GameMode.h
         source/GameResources.cpp
         source/GameResources.h
+        source/GameServer.cpp
+        source/GameServer.h
+        source/GameServerTransport.h
         source/GameSettings.cpp
         source/GameSettings.h
         source/Image.cpp
@@ -134,6 +138,8 @@ set(D6R_SOURCES
         source/LevelList.h
         source/LevelRenderData.cpp
         source/LevelRenderData.h
+        source/LocalGameServerTransport.cpp
+        source/LocalGameServerTransport.h
         source/Main.cpp
         source/Material.h
         source/Menu.cpp

@@ -28,21 +28,20 @@
 #ifndef DUEL6_GAME_H
 #define DUEL6_GAME_H
 
+#include <memory>
 #include <utility>
 #include <vector>
-#include <queue>
 #include <string>
-#include <algorithm>
 #include "Type.h"
 #include "ScreenMode.h"
 #include "Context.h"
-#include "World.h"
 #include "Player.h"
 #include "WorldRenderer.h"
-#include "Water.h"
 #include "AppService.h"
+#include "GamePlayerDefinition.h"
 #include "GameSettings.h"
 #include "GameResources.h"
+#include "GameServerTransport.h"
 #include "Round.h"
 
 namespace Duel6 {
@@ -51,64 +50,20 @@ namespace Duel6 {
     class Menu;
 
     class Game : public Context {
-    public:
-        class PlayerDefinition {
-        private:
-            Person &person;
-            PlayerSkinColors colors;
-            const PlayerSounds &sounds;
-            const PlayerControls &controls;
-
-        public:
-            PlayerDefinition(Person &person, const PlayerSkinColors &colors, const PlayerSounds &sounds,
-                             const PlayerControls &controls)
-                    : person(person), colors(colors), sounds(sounds), controls(controls) {}
-
-            Person &getPerson() const {
-                return person;
-            }
-
-            PlayerSkinColors &getColors() {
-                return colors;
-            }
-
-            const PlayerSkinColors &getColors() const {
-                return colors;
-            }
-
-            const PlayerSounds &getSounds() const {
-                return sounds;
-            }
-
-            const PlayerControls &getControls() const {
-                return controls;
-            }
-        };
-
     private:
         AppService &appService;
         GameResources &resources;
         GameSettings &settings;
-        GameMode *gameMode;
-        std::unique_ptr<Round> round;
+        std::unique_ptr<GameServerTransport> serverTransport;
         WorldRenderer worldRenderer;
         const Menu *menu;
-
-        std::vector<std::string> levels;
-        std::vector<Size> backgrounds;
-
-        Int32 currentRound;
-        Int32 playedRounds;
-
-        std::vector<Player> players;
-        std::vector<PlayerSkin> skins;
-        std::unique_ptr<PlayerAnimations> playerAnimations;
+        std::vector<const PlayerControls *> localPlayerControls;
         bool displayScoreTab = false;
 
     public:
         Game(AppService &appService, GameResources &resources, GameSettings &settings);
 
-        void start(const std::vector<PlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
+        void start(const std::vector<GamePlayerDefinition> &playerDefinitions, const std::vector<std::string> &levels,
                    const std::vector<Size> &backgrounds, ScreenMode screenMode, Int32 screenZoom, GameMode &gameMode);
 
         void keyEvent(const KeyPressEvent &event) override;
@@ -133,17 +88,11 @@ namespace Duel6 {
             return appService;
         }
 
-        const std::vector<Size> &getBackgrounds() const {
-            return backgrounds;
-        }
+        const std::vector<Size> &getBackgrounds() const;
 
-        std::vector<Player> &getPlayers() {
-            return players;
-        }
+        std::vector<Player> &getPlayers();
 
-        const std::vector<Player> &getPlayers() const {
-            return players;
-        }
+        const std::vector<Player> &getPlayers() const;
 
         GameResources &getResources() {
             return resources;
@@ -161,27 +110,17 @@ namespace Duel6 {
             return settings;
         }
 
-        Round &getRound() {
-            return *round;
-        }
+        Round &getRound();
 
-        const Round &getRound() const {
-            return *round;
-        }
+        const Round &getRound() const;
 
-        Int32 getPlayedRounds() const {
-            return playedRounds;
-        }
+        Int32 getPlayedRounds() const;
 
-        void setPlayedRounds(Int32 playedRounds) {
-            this->playedRounds = playedRounds;
-        }
+        void setPlayedRounds(Int32 playedRounds);
 
         Int32 getCurrentRound() const;
 
-        bool isOver() const {
-            return getRound().isLast() && getRound().isOver();
-        }
+        bool isOver() const;
 
         bool isDisplayingScoreTab() const {
             return displayScoreTab;
@@ -195,13 +134,9 @@ namespace Duel6 {
             return worldRenderer;
         }
 
-        GameMode &getMode() {
-            return *gameMode;
-        }
+        GameMode &getMode();
 
-        const GameMode &getMode() const {
-            return *gameMode;
-        }
+        const GameMode &getMode() const;
 
         void setMenuReference(const Menu &menu) {
             this->menu = &menu;
@@ -213,6 +148,18 @@ namespace Duel6 {
         void beforeClose(Context *nextContext) override;
 
         void startRound();
+
+        void prepareRoundClientView();
+
+        void updatePlayerViews();
+
+        void updatePlayerCameras();
+
+        void splitScreenView(Player &player, Int32 x, Int32 y) const;
+
+        std::vector<Uint32> collectPlayerInputs() const;
+
+        void switchScreenMode();
 
         void nextRound();
 

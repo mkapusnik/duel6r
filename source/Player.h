@@ -35,7 +35,6 @@
 #include "SpriteList.h"
 #include "Person.h"
 #include "PlayerSkin.h"
-#include "input/PlayerControls.h"
 #include "PlayerSounds.h"
 #include "Orientation.h"
 #include "ScreenMode.h"
@@ -108,7 +107,6 @@ namespace Duel6 {
         Vector cameraTolerance;
         const PlayerAnimations &animations;
         const PlayerSounds &sounds;
-        const PlayerControls &controls;
         PlayerView view;
         WaterState water;
         SpriteList::Iterator sprite;
@@ -137,7 +135,7 @@ namespace Duel6 {
         CollidingEntity collider;
 
     public:
-        Player(Person &person, const PlayerSkin &skin, const PlayerSounds &sounds, const PlayerControls &controls);
+        Player(Person &person, const PlayerSkin &skin, const PlayerSounds &sounds);
 
         ~Player();
 
@@ -153,11 +151,15 @@ namespace Duel6 {
 
         void setView(const PlayerView &view);
 
-        void updateControllerStatus();
+        void setControllerState(Uint32 controllerState) {
+            this->controllerState = controllerState;
+        }
 
-        void update(World &world, ScreenMode screenMode, Float32 elapsedTime);
+        void update(World &world, Float32 elapsedTime);
 
         void prepareCam(const Video &video, ScreenMode screenMode, Int32 zoom, Int32 levelSizeX, Int32 levelSizeY);
+
+        void updateCamera(Int32 levelSizeX, Int32 levelSizeY);
 
         bool hit(Float32 pw); // Returns true if the shot caused the player to die
         bool hitByShot(Float32 pw, Shot &s, bool directHit, const Vector &hitPoint, const Vector &shotVector);
@@ -425,8 +427,6 @@ namespace Duel6 {
         void setAnm();
 
         void unstuck();
-
-        void updateCam(Int32 levelSizeX, Int32 levelSizeY);
 
         void switchToOriginalSkin();
 

@@ -30,8 +30,9 @@
 
 #include <string>
 #include <vector>
-#include "Player.h"
+#include "GamePlayerDefinition.h"
 #include "Game.h"
+#include "Player.h"
 #include "World.h"
 #include "Ranking.h"
 
@@ -42,7 +43,7 @@ namespace Duel6 {
 
         virtual std::string getName() const = 0;
 
-        virtual void initializePlayers(std::vector<Game::PlayerDefinition> &definitions) = 0;
+        virtual void initializePlayers(std::vector<GamePlayerDefinition> &definitions) = 0;
 
         virtual void initializeGame(Game &game, std::vector<Player> &players, bool quickLiquid = false, bool globalAssistances = false) = 0;
 

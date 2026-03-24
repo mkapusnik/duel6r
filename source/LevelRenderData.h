@@ -54,6 +54,10 @@ namespace Duel6 {
 
         void update(Float32 elapsedTime);
 
+        void setScreenMode(ScreenMode screenMode) {
+            this->screenMode = screenMode;
+        }
+
         FaceList &getWalls() {
             return walls;
         }

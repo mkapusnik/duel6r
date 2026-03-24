@@ -470,14 +470,14 @@ namespace Duel6 {
 
         GameMode &selectedMode = *gameModes[gameModeSwitch->currentItem()];
 
-        std::vector<Game::PlayerDefinition> playerDefinitions;
+        std::vector<GamePlayerDefinition> playerDefinitions;
         for (Size i = 0; i < playerListBox->size(); i++) {
             Person &person = persons.getByName(playerListBox->getItem(i));
             auto profile = getPersonProfile(person.getName());
             const PlayerControls &controls = controlsManager.get(controlSwitch[i]->currentValue().first);
             PlayerSkinColors colors = profile ? profile->getSkinColors() : PlayerSkinColors::makeRandom();
             const PlayerSounds &sounds = profile ? profile->getSounds() : defaultPlayerSounds;
-            playerDefinitions.push_back(Game::PlayerDefinition(person, colors, sounds, controls));
+            playerDefinitions.push_back(GamePlayerDefinition(person, colors, sounds, controls));
         }
         selectedMode.initializePlayers(playerDefinitions);
 
@@ -498,8 +498,8 @@ namespace Duel6 {
         }
 
         // Start
-        Context::push(*game);
         game->start(playerDefinitions, levels, backgrounds, screenMode, screenZoom, selectedMode);
+        Context::push(*game);
     }
 
     void Menu::addPlayer(Int32 index) {
