@@ -2,8 +2,7 @@ name: Release Artifact
 
 on:
   push:
-    tags:
-      - "*"
+    branches: [ master ]
   workflow_dispatch:
 
 permissions:
