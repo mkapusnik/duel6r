@@ -1,0 +1,20 @@
+name: Nightly - Builds
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  tag:
+    name: Tag - nightly
+    permissions:
+      contents: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: mkapusnik/commons/.github/actions/tag@master
+        with:
+          tag: nightly
+          token: ${{ secrets.PAT }}
