@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+workspace_dir="${WORKSPACE_DIR:-/workspace}"
+output_dir="${OUTPUT_DIR:-build}"
+build_type="${BUILD_TYPE:-Release}"
+renderer="${D6R_RENDERER:-gl4}"
+with_lua="${D6R_WITH_LUA:-ON}"
+
+tmp_build_dir="$(mktemp -d /tmp/duel6r-build-XXXXXX)"
+cleanup() {
+  rm -rf "${tmp_build_dir}"
+}
+trap cleanup EXIT
+
+cmake -S "${workspace_dir}" -B "${tmp_build_dir}" \
+  -DCMAKE_BUILD_TYPE="${build_type}" \
+  -DD6R_RENDERER="${renderer}" \
+  -DD6R_WITH_LUA="${with_lua}"
+
+cmake --build "${tmp_build_dir}" -j"$(nproc)"
+
+rm -rf "${workspace_dir}/${output_dir}"
+mkdir -p "${workspace_dir}/${output_dir}"
+
+cp "${tmp_build_dir}/duel6r" "${workspace_dir}/${output_dir}/duel6r"
+cp -R "${workspace_dir}/resources/." "${workspace_dir}/${output_dir}/"
+
+echo "Runtime bundle written to ${workspace_dir}/${output_dir}"

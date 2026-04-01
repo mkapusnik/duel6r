@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG D6R_RENDERER=gl4
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -19,19 +18,10 @@ RUN apt-get update \
         libsdl2-ttf-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /src
+WORKDIR /workspace
 
-COPY . .
+COPY docker/build.sh /usr/local/bin/duel6r-build
 
-RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DD6R_RENDERER=${D6R_RENDERER} \
-    && cmake --build build -j"$(nproc)"
+RUN chmod +x /usr/local/bin/duel6r-build
 
-RUN mkdir -p /release \
-    && cp build/duel6r /release/duel6r \
-    && cp -R resources/* /release/
-
-FROM busybox:1.36.1-uclibc AS artifact-exporter
-
-COPY --from=builder /release/ /release/
-
-CMD ["true"]
+ENTRYPOINT ["/usr/local/bin/duel6r-build"]

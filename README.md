@@ -19,13 +19,27 @@ There is a **builtin quake-style console** that can be used to modify game aspec
 
 ## Docker build
 
-You can build a release bundle with Docker as the only host dependency:
+You can build a runnable release bundle with Docker as the only host dependency.
+
+### Local build with Docker Compose
 
 ```sh
-mkdir -p dist && cid="$(docker create "$(docker build -q .)")" && docker cp "$cid:/release/." dist && docker rm "$cid" >/dev/null
+docker compose -f docker-compose.build.yml run --rm build
 ```
 
-The command writes a runnable release layout to `dist/`, including the `duel6r` executable and the required runtime assets (`data/`, `levels/`, `profiles/`, `shaders/`, `sound/`, `textures/`).
+The command writes a runnable release layout to `build/`, including the `duel6r` executable and the required runtime assets (`data/`, `levels/`, `profiles/`, `shaders/`, `sound/`, `textures/`).
+
+### Manual build with Docker
+
+If you prefer not to use Docker Compose, run the build container directly:
+
+```sh
+docker run --rm -v "$PWD:/workspace" ghcr.io/mkapusnik/duel6r-build:develop
+```
+
+### Build image publication
+
+The build image is published to GitHub Container Registry (`ghcr.io/mkapusnik/duel6r-build`) by the `Develop - Build Container Image` workflow whenever `Dockerfile` or `docker/build.sh` changes on the `develop` branch.
 
 ## Supported platforms
 

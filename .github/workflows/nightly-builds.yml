@@ -7,6 +7,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build:
+    name: Sanity Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Pull build image
+        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+
+      - name: Build runtime bundle inside container
+        run: |
+          mkdir -p dist
+          docker run --rm e OUTPUT_DIR=dist -v "$PWD:/workspace" ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+
   tag:
     name: Tag - nightly
     permissions:

@@ -3,6 +3,10 @@ on:
   push:
     branches: [ develop ]
 
+permissions:
+  contents: read
+  packages: write
+
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
@@ -14,8 +18,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build Docker release image
-        run: docker build .
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Pull build image
+        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+
+      - name: Build runtime bundle inside container
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+
+      - name: Verify build output
+        run: test -x build/duel6r
 
   tag:
     name: Tag - sanity
