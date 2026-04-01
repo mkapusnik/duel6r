@@ -197,3 +197,24 @@ The architecture is organized around a small set of shared application services 
 - Startup configuration must be file-driven so that default audio, weapon availability, and other session-affecting settings can be changed without recompiling.
 - Console commands must be able to alter runtime behavior such as renderer diagnostics, FPS display, music and volume, round count, weapon enablement, map selection, ghosting, and controller rescans.
 - Lua profile scripts must be able to inspect match context at a high level, observe the controlled player, other players, the level, and active shots, and influence play through input-like actions rather than unrestricted world editing.
+
+## Branching strategy
+
+CI/CD workflow is leveraging GitHub Actions.
+
+- Branch: `feature-*`
+  - Contains: unstable changes, prototypes, etc.
+  - Requirements: Game compilation successful
+
+- Branch: `develop`
+  - Contains: bleeding edge features
+  - Requirements: Passes basic sanity checks and linting
+  - Tags:
+    - `sanity` - confirms passing the sanity and linting checks
+    - `nightly` - nightly build artifacts are created and published to GitHub
+
+- Branch: `master`
+  - Contains: stable version
+  - Requirements: Nightly version can be executed successfully
+  - Tags:
+    - `released` - Release artifacts are created and published to GitHub

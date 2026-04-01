@@ -2,7 +2,7 @@ name: Sanity - Build Docker Image
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ sanity ]
   workflow_dispatch:
 
 permissions:
