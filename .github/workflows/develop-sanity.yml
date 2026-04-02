@@ -3,10 +3,6 @@ on:
   push:
     branches: [ develop ]
 
-permissions:
-  contents: read
-  packages: write
-
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
