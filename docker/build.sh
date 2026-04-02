@@ -23,7 +23,17 @@ cmake --build "${tmp_build_dir}" -j"$(nproc)"
 rm -rf "${workspace_dir}/${output_dir}"
 mkdir -p "${workspace_dir}/${output_dir}"
 
-cp "${tmp_build_dir}/duel6r" "${workspace_dir}/${output_dir}/duel6r"
+source_binary="${tmp_build_dir}/duel6r"
+if [[ ! -f "${source_binary}" && -f "${tmp_build_dir}/duel6rd" ]]; then
+  source_binary="${tmp_build_dir}/duel6rd"
+fi
+
+if [[ ! -f "${source_binary}" ]]; then
+  echo "Unable to find built application in ${tmp_build_dir}" >&2
+  exit 1
+fi
+
+cp "${source_binary}" "${workspace_dir}/${output_dir}/duel6r"
 cp -R "${workspace_dir}/resources/." "${workspace_dir}/${output_dir}/"
 
 echo "Runtime bundle written to ${workspace_dir}/${output_dir}"
