@@ -28,10 +28,12 @@
 #ifndef DUEL6_MATH_MATH_H
 #define DUEL6_MATH_MATH_H
 
+#include <cmath>
+#include <algorithm>
+#include <cstdlib>
 #include <random>
 #include <string>
-#include <cstdlib>
-#include <cmath>
+
 #include "../Type.h"
 
 namespace Duel6 {

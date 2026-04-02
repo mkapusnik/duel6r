@@ -25,6 +25,7 @@
 * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <algorithm>
 #include <stdlib.h>
 #include "Sound.h"
 #include "Video.h"

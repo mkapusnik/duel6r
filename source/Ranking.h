@@ -28,6 +28,7 @@
 #ifndef DUEL6_RANKING_H
 #define DUEL6_RANKING_H
 
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "Color.h"
