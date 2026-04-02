@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  packages: read
 
 jobs:
   build-release-artifact:
@@ -25,21 +26,25 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Build Docker release image
+      - name: Log in to GHCR
         if: matrix.target == 'linux'
-        id: docker-image
-        run: |
-          echo "image=$(docker build -q .)" >> "$GITHUB_OUTPUT"
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Export Linux release bundle
+      - name: Pull build image
+        if: matrix.target == 'linux'
+        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+
+      - name: Build Linux release bundle
         if: matrix.target == 'linux'
         run: |
-          mkdir -p dist
-          cid="$(docker create "${{ steps.docker-image.outputs.image }}")"
-          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
-          docker cp "$cid:/release/." dist
-          docker rm "$cid" >/dev/null
-          trap - EXIT
+          docker run --rm \
+            -e OUTPUT_DIR=dist \
+            -v "$PWD:/workspace" \
+            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
 
       - name: Set up MSYS2
         if: matrix.target == 'windows'
