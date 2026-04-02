@@ -29,16 +29,63 @@ jobs:
       - name: Build runtime bundle inside container
         run: |
           mkdir -p dist
-          docker run --rm e OUTPUT_DIR=dist -v "$PWD:/workspace" ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+          docker run --rm \
+            -e OUTPUT_DIR=dist \
+            -v "$PWD:/workspace" \
+            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+
+      - name: Package nightly bundle
+        run: |
+          ARCHIVE_NAME="duel6r-nightly-linux.zip" python - <<'PY'
+          import os
+          import zipfile
+
+          archive_name = os.environ["ARCHIVE_NAME"]
+          root = "dist"
+
+          with zipfile.ZipFile(archive_name, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+              for current_root, _, files in os.walk(root):
+                  for file_name in files:
+                      path = os.path.join(current_root, file_name)
+                      archive.write(path, os.path.relpath(path, root))
+          PY
+
+      - name: Upload nightly artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: duel6r-nightly-linux
+          path: duel6r-nightly-linux.zip
+          if-no-files-found: error
 
   tag:
     name: Tag - nightly
     permissions:
       contents: 'write'
     runs-on: ubuntu-latest
+    needs: [build]
     steps:
       - uses: actions/checkout@v6
       - uses: mkapusnik/commons/.github/actions/tag@master
         with:
           tag: nightly
           token: ${{ secrets.PAT }}
+
+  release:
+    name: Publish nightly pre-release
+    needs: [build, tag]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download nightly artifact
+        uses: actions/download-artifact@v5
+        with:
+          path: release-assets
+
+      - name: Publish nightly release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          prerelease: true
+          files: |
+            release-assets/**/*.zip

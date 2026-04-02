@@ -1,0 +1,43 @@
+name: Feature - Compile check
+
+on:
+  push:
+    branches:
+      - feature-*
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: Compile (Linux)
+    if: github.event_name == 'push' || startsWith(github.head_ref, 'feature-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Pull build image
+        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+
+      - name: Build inside container
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+
+      - name: Verify build output
+        run: test -x build/duel6r
