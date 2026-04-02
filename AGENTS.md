@@ -41,63 +41,103 @@ Duel 6 Reloaded is a cross-platform, local-only 2D arena combat game in which 2 
 
 ## Build & Development Commands
 
-Install native dependencies on Ubuntu or Debian:
+Docker-based commands are the only supported and allowed way to build, test, lint, type-check, package, and run this project. Native host compilation commands are not supported.
+
+Build (or refresh) the local build container image:
 
 ```sh
-sudo apt-get update
-sudo apt-get install -y build-essential cmake libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libglew-dev liblua5.3-dev zip gdb
+docker build -t duel6r-build:local .
 ```
 
-Configure and build a release binary (default renderer is `gl4`, but `gl1`, `es2`, and `es3` are also supported):
+Build a release runtime bundle (default renderer is `gl4`, but `gl1`, `es2`, and `es3` are also supported):
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build -j"$(nproc)"
+docker run --rm \
+  -e OUTPUT_DIR=build \
+  -e BUILD_TYPE=Release \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
-Run locally by staging the runtime assets beside the executable:
+Run locally from the generated runtime bundle:
 
 ```sh
-cp -R resources/* build/
 ./build/duel6r
 ```
 
-Configure and run a debug build:
+Build a debug runtime bundle:
 
 ```sh
-cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-debug -j"$(nproc)"
-cp -R resources/* build-debug/
-gdb --args ./build-debug/duel6rd
+docker run --rm \
+  -e OUTPUT_DIR=build-debug \
+  -e BUILD_TYPE=Debug \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
-Test locally (the repository has no automated test suite, so a clean native build is the current CI-equivalent validation step):
+Debug locally with gdb inside the container:
 
 ```sh
-cmake -S . -B build-test -DCMAKE_BUILD_TYPE=Release -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-test -j"$(nproc)"
+docker run --rm -it \
+  --cap-add=SYS_PTRACE \
+  --security-opt seccomp=unconfined \
+  -e OUTPUT_DIR=build-debug \
+  -e BUILD_TYPE=Debug \
+  -v "$PWD:/workspace" \
+  duel6r-build:local \
+  gdb --args /workspace/build-debug/duel6r
+```
+
+Test locally (the repository has no automated test suite, so a clean containerized build is the current CI-equivalent validation step):
+
+```sh
+docker run --rm \
+  -e OUTPUT_DIR=build-test \
+  -e BUILD_TYPE=Release \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
 Lint locally (no dedicated lint target exists in this repository):
 
 ```sh
-cmake -S . -B build-lint -DCMAKE_BUILD_TYPE=Debug -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-lint -j"$(nproc)"
+docker run --rm \
+  -e OUTPUT_DIR=build-lint \
+  -e BUILD_TYPE=Debug \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
-Type-check locally (native compilation is the only type-safety gate in the current codebase):
+Type-check locally (containerized compilation is the only type-safety gate in the current codebase):
 
 ```sh
-cmake -S . -B build-typecheck -DCMAKE_BUILD_TYPE=Debug -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-typecheck -j"$(nproc)"
+docker run --rm \
+  -e OUTPUT_DIR=build-typecheck \
+  -e BUILD_TYPE=Debug \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
 Create a release artifact similar to the legacy CI deploy flow:
 
 ```sh
-cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-release -j"$(nproc)"
-cp -R resources/* build-release/
+docker run --rm \
+  -e OUTPUT_DIR=build-release \
+  -e BUILD_TYPE=Release \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 (
   cd build-release &&
   zip -r duel-nightly.zip duel6r data levels profiles shaders sound textures
