@@ -23,6 +23,11 @@ cmake -S "${workspace_dir}" -B "${tmp_build_dir}" \
   -DD6R_RENDERER="${renderer}" \
   -DD6R_WITH_LUA="${with_lua}"
 
+icon_file="${workspace_dir}/source/icon1.ico"
+if [[ -f "${icon_file}" ]]; then
+  cp "${icon_file}" "${tmp_build_dir}/icon1.ico"
+fi
+
 cmake --build "${tmp_build_dir}" -j"$(nproc)"
 
 if [[ "${run_tests}" == "ON" ]]; then
