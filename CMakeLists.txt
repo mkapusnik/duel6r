@@ -528,15 +528,17 @@ if (MINGW)
 endif (MINGW)
 
 # OpenGL
-if (WIN32)
+if (WIN32 AND NOT MINGW)
     target_link_libraries(${D6R_APP_NAME} opengl32.lib)
+elseif (MINGW)
+    target_link_libraries(${D6R_APP_NAME} opengl32)
 elseif (APPLE)
     find_library(LIB_OPEN_GL OpenGL DOC "Path to OpenGL framework")
     target_link_libraries(${D6R_APP_NAME} ${LIB_OPEN_GL})
-else (WIN32) # Linux GCC
+else (WIN32 AND NOT MINGW) # Linux GCC
     find_library(LIB_OPEN_GL GL DOC "Path to OpenGL import library")
     target_link_libraries(${D6R_APP_NAME} ${LIB_OPEN_GL})
-endif (WIN32)
+endif (WIN32 AND NOT MINGW)
 
 # SDL
 find_path(HEADERS_SDL2 SDL2/SDL.h DOC "Path to SDL2 headers")
@@ -547,7 +549,13 @@ find_library(LIB_SDL2_MAIN SDL2main DOC "Path to SDL2main import library")
 find_library(LIB_SDL2_MIXER SDL2_mixer DOC "Path to SDL2_mixer import library")
 find_library(LIB_SDL2_TTF SDL2_ttf DOC "Path to SDL2_ttf import library")
 find_library(LIB_SDL2_IMAGE SDL2_image DOC "Path to SDL2_image import library")
-target_link_libraries(${D6R_APP_NAME} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
+
+if (MINGW)
+    # On MinGW we might need to link with additional libraries or use specific names
+    target_link_libraries(${D6R_APP_NAME} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE} -lsetupapi -lwinmm -limm32 -lversion)
+else (MINGW)
+    target_link_libraries(${D6R_APP_NAME} ${LIB_SDL2_MAIN} ${LIB_SDL2} ${LIB_SDL2_MIXER} ${LIB_SDL2_TTF} ${LIB_SDL2_IMAGE})
+endif (MINGW)
 
 # GLEW
 if (WIN32)
@@ -561,15 +569,20 @@ include_directories(${HEADERS_GLEW})
 
 # LUA
 if (D6R_WITH_LUA)
-    if (WIN32)
+    if (WIN32 AND NOT MINGW)
         find_library(LIB_LUA lua DOC "Path to LUA library")
         target_link_libraries(${D6R_APP_NAME} ${LIB_LUA})
         find_path(HEADERS_LUA lua.hpp DOC "Path to LUA headers")
         include_directories(${HEADERS_LUA})
-    else (WIN32)
+    elseif (MINGW)
+        find_library(LIB_LUA lua DOC "Path to LUA library")
+        target_link_libraries(${D6R_APP_NAME} ${LIB_LUA})
+        find_path(HEADERS_LUA lua.hpp DOC "Path to LUA headers")
+        include_directories(${HEADERS_LUA})
+    else (WIN32 AND NOT MINGW)
         find_library(LIB_LUA lua5.3 DOC "Path to LUA library")
         target_link_libraries(${D6R_APP_NAME} ${LIB_LUA})
         find_path(HEADERS_LUA lua5.3/lua.hpp DOC "Path to LUA headers")
         include_directories(${HEADERS_LUA}/lua5.3)
-    endif (WIN32)
+    endif (WIN32 AND NOT MINGW)
 endif (D6R_WITH_LUA)

@@ -51,7 +51,7 @@
 #include <errno.h>
 
 #include "msdir.h"
-#ifdef USE_DIRENT_PORT
+#if defined(USE_DIRENT_PORT) && (defined(MSDIR_WIN32_INTERFACE) || defined(MSDIR_MSDOS_INTERFACE))
 
 static int init_DIR( DIR *p);
 
@@ -325,4 +325,4 @@ static int init_DIR( DIR *dirp)
 }
 
 
-#endif /*USE_DIRENT_PORT*/
+#endif /* USE_DIRENT_PORT && (MSDIR_WIN32_INTERFACE || MSDIR_MSDOS_INTERFACE) */
