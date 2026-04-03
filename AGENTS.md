@@ -92,14 +92,29 @@ docker run --rm -it \
   gdb --args /workspace/build-debug/duel6r
 ```
 
-Test locally (the repository has no automated test suite, so a clean containerized build is the current CI-equivalent validation step):
+Test locally (build + automated tests via `ctest` inside the container):
 
 ```sh
 docker run --rm \
   -e OUTPUT_DIR=build-test \
   -e BUILD_TYPE=Release \
+  -e BUILD_TESTING=ON \
   -e D6R_RENDERER=gl4 \
   -e D6R_WITH_LUA=ON \
+  -e RUN_TESTS=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
+```
+
+Run only the automated test binary (without packaging runtime bundle):
+
+```sh
+docker run --rm \
+  -e BUILD_TYPE=Release \
+  -e BUILD_TESTING=ON \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -e RUN_TESTS=ON \
   -v "$PWD:/workspace" \
   duel6r-build:local
 ```
@@ -172,12 +187,12 @@ The architecture is organized around a small set of shared application services 
 
 ## Testing Strategy
 
-- Unit testing - No unit-test suite is bundled today, so a reimplementation should add focused coverage for rules, scoring, profile loading, map parsing, and persistence while treating the original project as behavior reference rather than test oracle.
+- Unit testing - The repository now includes an in-tree C++ test executable (`duel6r-tests`) registered in `ctest`. Current coverage targets deterministic logic and data validation (math, formatting, JSON parser/writer, and shipped JSON resource schema checks).
 - Integration testing - The existing project validates integration primarily through a full native build and startup path, so local validation should include compiling from scratch, copying runtime assets beside the executable, and confirming the menu, profile loading, controller scan, and match start all work.
 - End-to-end testing - Manual smoke tests should cover the full player loop: create at least two players, start a match, move, jump, crouch, shoot, pick up or swap weapons, collect bonuses, interact with water and elevators, finish a round, inspect the scoreboard, and return to the menu.
 - Mode coverage - Manual verification should include at least one Deathmatch session, one Predator session, and one team session with friendly fire behavior, plus split-screen toggling in matches with fewer than five players.
 - Console and scripting coverage - Validation should also confirm that the console opens during menu and gameplay, runtime commands alter behavior, and a profile script can observe match state and drive player actions.
-- CI behavior - The current CI definition in `.travis.yml` only installs dependencies, runs `cmake .. && make`, and creates a release zip on tagged builds, so there are no automated gameplay or regression tests in CI today.
+- CI behavior - GitHub Actions nightly and develop sanity flows run automated tests as part of the containerized build (`BUILD_TESTING=ON`, `RUN_TESTS=ON`) and fail the job if `ctest` reports failures. Legacy `.travis.yml` remains historical context only.
 
 ## Features
 

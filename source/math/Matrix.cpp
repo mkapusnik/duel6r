@@ -112,7 +112,7 @@ namespace Duel6 {
         const Float32 *src = m.data;
 
         for (Int32 i = 0; i < 16; i++, dest++, src++) {
-            *dest += *src;
+            *dest -= *src;
         }
 
         return *this;

@@ -6,6 +6,8 @@ output_dir="${OUTPUT_DIR:-build}"
 build_type="${BUILD_TYPE:-Release}"
 renderer="${D6R_RENDERER:-gl4}"
 with_lua="${D6R_WITH_LUA:-ON}"
+build_testing="${BUILD_TESTING:-ON}"
+run_tests="${RUN_TESTS:-OFF}"
 
 tmp_build_dir="$(mktemp -d /tmp/duel6r-build-XXXXXX)"
 cleanup() {
@@ -15,10 +17,15 @@ trap cleanup EXIT
 
 cmake -S "${workspace_dir}" -B "${tmp_build_dir}" \
   -DCMAKE_BUILD_TYPE="${build_type}" \
+  -DBUILD_TESTING="${build_testing}" \
   -DD6R_RENDERER="${renderer}" \
   -DD6R_WITH_LUA="${with_lua}"
 
 cmake --build "${tmp_build_dir}" -j"$(nproc)"
+
+if [[ "${run_tests}" == "ON" ]]; then
+  ctest --test-dir "${tmp_build_dir}" --output-on-failure
+fi
 
 rm -rf "${workspace_dir}/${output_dir}"
 mkdir -p "${workspace_dir}/${output_dir}"
