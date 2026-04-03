@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1
+
+FROM ubuntu:24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        cmake \
+        curl \
+        g++-mingw-w64-x86-64 \
+        gcc-mingw-w64-x86-64 \
+        git \
+        mingw-w64-tools \
+        ninja-build \
+        pkg-config \
+        python3 \
+        unzip \
+        zip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt
+
+RUN git clone https://github.com/microsoft/vcpkg.git /opt/vcpkg \
+    && cd /opt/vcpkg \
+    && ./bootstrap-vcpkg.sh -disableMetrics
+
+RUN VCPKG_FORCE_SYSTEM_BINARIES=1 /opt/vcpkg/vcpkg install --triplet x64-mingw-dynamic \
+        sdl2 \
+        sdl2-image \
+        sdl2-mixer \
+        sdl2-ttf \
+        glew \
+        lua
+
+WORKDIR /workspace
+
+COPY docker/build-windows.sh /usr/local/bin/duel6r-build-windows
+COPY docker/toolchains/mingw-w64-x86_64.cmake /opt/toolchains/mingw-w64-x86_64.cmake
+
+RUN chmod +x /usr/local/bin/duel6r-build-windows
+
+ENTRYPOINT ["/usr/local/bin/duel6r-build-windows"]
