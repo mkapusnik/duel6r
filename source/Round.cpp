@@ -25,6 +25,8 @@
 * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <algorithm>
+
 #include "Round.h"
 #include "Game.h"
 #include "GameException.h"

@@ -41,63 +41,118 @@ Duel 6 Reloaded is a cross-platform, local-only 2D arena combat game in which 2 
 
 ## Build & Development Commands
 
-Install native dependencies on Ubuntu or Debian:
+Docker-based commands are the only supported and allowed way to build, test, lint, type-check, package, and run this project. Native host compilation commands are not supported.
+
+Build (or refresh) the local build container image:
 
 ```sh
-sudo apt-get update
-sudo apt-get install -y build-essential cmake libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libglew-dev liblua5.3-dev zip gdb
+docker build -t duel6r-build:local .
 ```
 
-Configure and build a release binary (default renderer is `gl4`, but `gl1`, `es2`, and `es3` are also supported):
+Build a release runtime bundle (default renderer is `gl4`, but `gl1`, `es2`, and `es3` are also supported):
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build -j"$(nproc)"
+docker run --rm \
+  -e OUTPUT_DIR=build \
+  -e BUILD_TYPE=Release \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
-Run locally by staging the runtime assets beside the executable:
+Run locally from the generated runtime bundle:
 
 ```sh
-cp -R resources/* build/
 ./build/duel6r
 ```
 
-Configure and run a debug build:
+Build a debug runtime bundle:
 
 ```sh
-cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-debug -j"$(nproc)"
-cp -R resources/* build-debug/
-gdb --args ./build-debug/duel6rd
+docker run --rm \
+  -e OUTPUT_DIR=build-debug \
+  -e BUILD_TYPE=Debug \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
-Test locally (the repository has no automated test suite, so a clean native build is the current CI-equivalent validation step):
+Debug locally with gdb inside the container:
 
 ```sh
-cmake -S . -B build-test -DCMAKE_BUILD_TYPE=Release -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-test -j"$(nproc)"
+docker run --rm -it \
+  --cap-add=SYS_PTRACE \
+  --security-opt seccomp=unconfined \
+  -e OUTPUT_DIR=build-debug \
+  -e BUILD_TYPE=Debug \
+  -v "$PWD:/workspace" \
+  duel6r-build:local \
+  gdb --args /workspace/build-debug/duel6r
+```
+
+Test locally (build + automated tests via `ctest` inside the container):
+
+```sh
+docker run --rm \
+  -e OUTPUT_DIR=build-test \
+  -e BUILD_TYPE=Release \
+  -e BUILD_TESTING=ON \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -e RUN_TESTS=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
+```
+
+Run only the automated test binary (without packaging runtime bundle):
+
+```sh
+docker run --rm \
+  -e BUILD_TYPE=Release \
+  -e BUILD_TESTING=ON \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -e RUN_TESTS=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
 Lint locally (no dedicated lint target exists in this repository):
 
 ```sh
-cmake -S . -B build-lint -DCMAKE_BUILD_TYPE=Debug -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-lint -j"$(nproc)"
+docker run --rm \
+  -e OUTPUT_DIR=build-lint \
+  -e BUILD_TYPE=Debug \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
-Type-check locally (native compilation is the only type-safety gate in the current codebase):
+Type-check locally (containerized compilation is the only type-safety gate in the current codebase):
 
 ```sh
-cmake -S . -B build-typecheck -DCMAKE_BUILD_TYPE=Debug -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-typecheck -j"$(nproc)"
+docker run --rm \
+  -e OUTPUT_DIR=build-typecheck \
+  -e BUILD_TYPE=Debug \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 ```
 
 Create a release artifact similar to the legacy CI deploy flow:
 
 ```sh
-cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DD6R_RENDERER=gl4 -DD6R_WITH_LUA=ON
-cmake --build build-release -j"$(nproc)"
-cp -R resources/* build-release/
+docker run --rm \
+  -e OUTPUT_DIR=build-release \
+  -e BUILD_TYPE=Release \
+  -e D6R_RENDERER=gl4 \
+  -e D6R_WITH_LUA=ON \
+  -v "$PWD:/workspace" \
+  duel6r-build:local
 (
   cd build-release &&
   zip -r duel-nightly.zip duel6r data levels profiles shaders sound textures
@@ -132,71 +187,18 @@ The architecture is organized around a small set of shared application services 
 
 ## Testing Strategy
 
-- Unit testing - No unit-test suite is bundled today, so a reimplementation should add focused coverage for rules, scoring, profile loading, map parsing, and persistence while treating the original project as behavior reference rather than test oracle.
+- Unit testing - The repository now includes an in-tree C++ test executable (`duel6r-tests`) registered in `ctest`. Current coverage targets deterministic logic and data validation (math, formatting, JSON parser/writer, and shipped JSON resource schema checks).
 - Integration testing - The existing project validates integration primarily through a full native build and startup path, so local validation should include compiling from scratch, copying runtime assets beside the executable, and confirming the menu, profile loading, controller scan, and match start all work.
 - End-to-end testing - Manual smoke tests should cover the full player loop: create at least two players, start a match, move, jump, crouch, shoot, pick up or swap weapons, collect bonuses, interact with water and elevators, finish a round, inspect the scoreboard, and return to the menu.
 - Mode coverage - Manual verification should include at least one Deathmatch session, one Predator session, and one team session with friendly fire behavior, plus split-screen toggling in matches with fewer than five players.
 - Console and scripting coverage - Validation should also confirm that the console opens during menu and gameplay, runtime commands alter behavior, and a profile script can observe match state and drive player actions.
-- CI behavior - The current CI definition in `.travis.yml` only installs dependencies, runs `cmake .. && make`, and creates a release zip on tagged builds, so there are no automated gameplay or regression tests in CI today.
+- CI behavior - GitHub Actions nightly and develop sanity flows run automated tests as part of the containerized build (`BUILD_TESTING=ON`, `RUN_TESTS=ON`) and fail the job if `ctest` reports failures. Legacy `.travis.yml` remains historical context only.
 
 ## Features
 
-### Match Setup and Session Flow
-
-- The game must support local multiplayer sessions with a minimum of 2 players and a maximum of 15 simultaneous players.
-- The main menu must let players build a roster from persistent people records, assign control schemes, add or remove active players, shuffle player order, clear stored stats, and start or exit a session.
-- The setup flow must expose selectable rulesets for free-for-all play, Predator, and team-based variants, along with toggles that affect assist handling and sudden-death water behavior.
-- Session state must persist across multiple rounds so that wins, kills, deaths, assists, penalties, and match progress accumulate until the session ends.
-
-### Player Controls and Core Actions
-
-- The game must support multiple predefined keyboard layouts plus SDL-style gamepad input, all mapped to the abstract actions move left, move right, jump, crouch, shoot, pick or swap weapon, and show status.
-- During play, each player must be able to walk, jump, crouch, double-jump, shoot, pick up dropped weapons, swap away from a current weapon, and request an on-screen status display.
-- Newly spawned players must receive brief spawn protection and a temporary location indicator so they can reorient after entering the round.
-- Matches with fewer than five players must support toggling between a full-arena presentation and split-screen player views.
-
-### World, Maps, and Environmental Hazards
-
-- Arenas must be data-driven and selected from a shipped library of JSON-authored maps; the current repository includes 28 bundled maps.
-- Levels must support solid terrain, water, waterfalls, moving elevators or platforms, decorative sprites, and map-specific layouts that influence combat routes and safe zones.
-- Water must act as an environmental hazard by draining air, then life, with multiple water variants that differ in severity.
-- Sudden death must be represented by rising water that pressures the remaining players when a round reaches a late-game state or when the relevant setup toggle is enabled.
-
-### Combat, Weapons, and Pickups
-
-- The game must provide a roster of distinct weapons with different reload cadence, ammo behavior, damage output, and special traits; the current code defines 17 weapons, with configuration deciding which are enabled by default.
-- Weapon behaviors must remain visibly differentiated at a high level, including chargeable weapons, splash-damage weapons, rapid-fire weapons, beam-style weapons, and status-effect or novelty weapons.
-- Players must begin rounds with a random enabled weapon and must drop their current weapon on death so that other players can claim it.
-- The game must spawn both temporary bonuses and dropped-weapon pickups into the world during live rounds.
-
-### Bonus Effects and Entity Interactions
-
-- The game must support instant pickups such as extra life, reduced life, full heal, and additional bullets, plus timed effects such as faster reload, faster movement, powerful shots, invulnerability, invisibility, splitfire, vampire shots, infinite ammo, and snorkel.
-- Bonus effects must alter how players interact with the world and with other combatants, for example by changing movement speed, survivability, underwater behavior, projectile output, or health recovery.
-- Player-versus-player interaction must include direct damage, splash damage, weapon theft through pickups after death, assists based on contribution, and penalties for self-destructive or team-harming actions when rules require it.
-- Player-versus-environment interaction must include drowning, movement penalties in water, platform riding, and survival pressure from escalating hazards.
-
-### Game Modes, Winning Conditions, and Scoring
-
-- Deathmatch must reward the sole surviving player when a round ends.
-- Predator must designate one player as the predator and change the balance of visibility, survivability, and win conditions between the predator and the remaining players.
-- Team modes must support 2-team, 3-team, and 4-team variants, each with friendly fire enabled or disabled, while keeping team identity visually readable.
-- The scoring model must persist wins, kills, assists, penalties, deaths, shots fired, accuracy, damage, points, and Elo-style ranking data, and it must visibly discourage suicide, drowning, and invalid kills through negative scoring.
-- The UI must surface both live rankings during play and fuller score summaries at round end or game end.
-
-### Profiles, Customization, and Persistence
-
-- The game must support name-based player profiles stored on disk, with optional skin colors, cosmetic choices, event sounds, and Lua behavior hooks.
-- If a matching profile is absent, the game must still generate a valid playable participant using default sounds and randomized visual customization.
-- Persistent people records must retain long-term statistics between launches and feed the menu roster on the next startup.
-- Team modes must be allowed to override part of a player's look so that team color remains identifiable even when profiles are customized.
-
-### Console, Configuration, and Scripting
-
-- The game must provide an in-game console that is available from both menu and gameplay contexts for runtime inspection and live configuration.
-- Startup configuration must be file-driven so that default audio, weapon availability, and other session-affecting settings can be changed without recompiling.
-- Console commands must be able to alter runtime behavior such as renderer diagnostics, FPS display, music and volume, round count, weapon enablement, map selection, ghosting, and controller rescans.
-- Lua profile scripts must be able to inspect match context at a high level, observe the controlled player, other players, the level, and active shots, and influence play through input-like actions rather than unrestricted world editing.
+Detailed description of functional requirements is in [docs/features.md](docs/features.md). They are non-negotiable.
+Do not change them unless explicitly asked.
+If your task contradicts any of the requirements, explicitly ask what to do and offer options for resolution.
 
 ## Branching strategy
 

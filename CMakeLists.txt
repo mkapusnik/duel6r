@@ -11,6 +11,8 @@ cmake_minimum_required(VERSION 3.5)
 # project name
 project(Duel6r)
 
+include(CTest)
+
 #########################################################################
 # Platform detection
 #########################################################################
@@ -471,6 +473,37 @@ if (D6R_WITH_LUA)
             source/script/lua/LuaScriptLoader.cpp
             )
 endif (D6R_WITH_LUA)
+
+if (BUILD_TESTING)
+    set(D6R_TEST_APP_NAME "duel6r-tests")
+    file(TO_CMAKE_PATH "${CMAKE_SOURCE_DIR}" D6R_TEST_SOURCE_DIR)
+    set(D6R_TEST_SOURCES
+            tests/TestHarness.h
+            tests/TestMain.cpp
+            tests/FormatTests.cpp
+            tests/JsonTests.cpp
+            tests/MathTests.cpp
+            tests/ResourceValidationTests.cpp
+            source/File.cpp
+            source/Format.cpp
+            source/msdir.c
+            source/math/Math.cpp
+            source/math/Matrix.cpp
+            source/math/Vector.cpp
+            source/json/JsonParser.cpp
+            source/json/JsonValue.cpp
+            source/json/JsonWriter.cpp
+            )
+
+    add_executable(${D6R_TEST_APP_NAME} ${D6R_TEST_SOURCES})
+    target_include_directories(${D6R_TEST_APP_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
+    target_compile_definitions(${D6R_TEST_APP_NAME} PRIVATE D6R_TEST_SOURCE_DIR="${D6R_TEST_SOURCE_DIR}")
+    if (MINGW)
+        set_property(TARGET ${D6R_TEST_APP_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -mconsole")
+    endif (MINGW)
+
+    add_test(NAME ${D6R_TEST_APP_NAME} COMMAND ${D6R_TEST_APP_NAME})
+endif (BUILD_TESTING)
 
 if (WIN32)
     set(D6R_SOURCES ${D6R_SOURCES} source/duel6r.rc)

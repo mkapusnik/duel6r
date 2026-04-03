@@ -103,8 +103,7 @@ namespace Duel6 {
                 Format("SDL_image version: {0}.{1}.{2}") << imgVersion->major << imgVersion->minor << imgVersion->patch);
 
 #ifdef D6_SCRIPTING_LUA
-        const lua_Number *luaVersion = lua_version(nullptr);
-        console.printLine(Format("Lua version: {0}") << *luaVersion);
+        console.printLine(Format("Lua version: {0}") << LUA_VERSION);
 #endif
 
         Console::registerBasicCommands(console);
