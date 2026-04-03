@@ -5,7 +5,10 @@ on:
     branches: [ develop ]
     paths:
       - Dockerfile
+      - Dockerfile.windows-cross
       - docker/build.sh
+      - docker/build-windows.sh
+      - docker/toolchains/mingw-w64-x86_64.cmake
       - .github/workflows/develop-build-image.yml
   workflow_dispatch:
 
@@ -30,7 +33,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
-        id: meta
+        id: meta-linux
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/duel6r-build
@@ -38,10 +41,28 @@ jobs:
             type=raw,value=develop
             type=sha,prefix=sha-
 
-      - name: Build and push image
+      - name: Build and push Linux build image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-linux.outputs.tags }}
+          labels: ${{ steps.meta-linux.outputs.labels }}
+
+      - name: Extract Docker metadata (Windows cross)
+        id: meta-win
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/duel6r-build-w64
+          tags: |
+            type=raw,value=develop
+            type=sha,prefix=sha-
+
+      - name: Build and push Windows cross image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.windows-cross
+          push: true
+          tags: ${{ steps.meta-win.outputs.tags }}
+          labels: ${{ steps.meta-win.outputs.labels }}
