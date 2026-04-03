@@ -2,5 +2,7 @@
 cmake-build-debug/*
 cmake-build-release/*
 build/*
+build-debug/*
+build-win/*
 dist/*
 .cache/*
