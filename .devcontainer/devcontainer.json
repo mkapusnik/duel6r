@@ -1,0 +1,22 @@
+{
+  "name": "Duel 6 Reloaded Windows Cross Build",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "duel6r-windows-dev",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "overrideCommand": false,
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools"
+      ],
+      "settings": {
+        "cmake.configureOnOpen": false,
+        "cmake.useCMakePresets": "never",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "postAttachCommand": "printf '\nDuel 6 Reloaded Windows dev container is ready. Run: duel6r-build-windows\n\n'"
+}
