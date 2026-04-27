@@ -68,7 +68,7 @@ jobs:
 
       - name: Extract Docker metadata (Windows cross)
         id: meta-win
-        uses: docker/metadata-action@v7
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/build-w64
           tags: |
@@ -76,7 +76,7 @@ jobs:
             type=sha,prefix=sha-
 
       - name: Build and push Windows cross image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.windows-cross
