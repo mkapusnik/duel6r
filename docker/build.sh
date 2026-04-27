@@ -8,6 +8,7 @@ renderer="${D6R_RENDERER:-gl4}"
 with_lua="${D6R_WITH_LUA:-ON}"
 build_testing="${BUILD_TESTING:-ON}"
 run_tests="${RUN_TESTS:-OFF}"
+clean_output_dir="${CLEAN_OUTPUT_DIR:-ON}"
 
 tmp_build_dir="$(mktemp -d /tmp/duel6r-build-XXXXXX)"
 cleanup() {
@@ -27,7 +28,9 @@ if [[ "${run_tests}" == "ON" ]]; then
   ctest --test-dir "${tmp_build_dir}" --output-on-failure
 fi
 
-rm -rf "${workspace_dir}/${output_dir}"
+if [[ "${clean_output_dir}" == "ON" ]]; then
+  rm -rf "${workspace_dir}/${output_dir}"
+fi
 mkdir -p "${workspace_dir}/${output_dir}"
 
 source_binary="${tmp_build_dir}/duel6r"
@@ -43,4 +46,4 @@ fi
 cp "${source_binary}" "${workspace_dir}/${output_dir}/duel6r"
 cp -R "${workspace_dir}/resources/." "${workspace_dir}/${output_dir}/"
 
-echo "Runtime bundle written to ${workspace_dir}/${output_dir}"
+echo "Linux runtime bundle written to ${workspace_dir}/${output_dir}"

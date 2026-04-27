@@ -27,30 +27,44 @@ You can build a runnable release bundle with Docker as the only host dependency.
 docker compose -f docker-compose.build.yml run --rm build
 ```
 
-The command writes a runnable release layout to `build/`, including the `duel6r` executable and the required runtime assets (`data/`, `levels/`, `profiles/`, `shaders/`, `sound/`, `textures/`).
+The command writes a runnable Linux release layout to `build/`, including the `duel6r` executable and the required runtime assets (`data/`, `levels/`, `profiles/`, `shaders/`, `sound/`, `textures/`).
 
-### Manual build with Docker
+### Manual Linux build with Docker
 
-If you prefer not to use Docker Compose, run the build container directly:
+If you prefer not to use Docker Compose, run the Linux build container directly:
 
 ```sh
 docker run --rm -v "$PWD:/workspace" ghcr.io/mkapusnik/duel6r-build:develop
 ```
 
-### Windows bundle from Docker (cross-compile)
+### Shared Linux and Windows bundle from Docker
 
-The Windows nightly/release artifacts are built on Linux runners via a dedicated cross image:
+The release and nightly workflows build both platforms into one shared `build/` directory. Run the Linux build first to create a clean bundle, then append the Windows executable and DLLs with the cross image:
 
 ```sh
-docker run --rm -v "$PWD:/workspace" -e OUTPUT_DIR=build-win ghcr.io/mkapusnik/duel6r/build-w64:develop
+docker run --rm \
+  -e OUTPUT_DIR=build \
+  -e CLEAN_OUTPUT_DIR=ON \
+  -v "$PWD:/workspace" \
+  ghcr.io/mkapusnik/duel6r-build:develop
+
+docker run --rm \
+  -e OUTPUT_DIR=build \
+  -e BUILD_TESTING=OFF \
+  -e RUN_TESTS=OFF \
+  -e CLEAN_OUTPUT_DIR=OFF \
+  -v "$PWD:/workspace" \
+  ghcr.io/mkapusnik/duel6r-build-w64:develop
 ```
+
+The final shared release bundle is `build/` with the Linux binary (`duel6r`), the Windows binary (`duel6r.exe`), Windows DLL dependencies, and one shared copy of runtime assets.
 
 ### Build image publication
 
 The build images are published to GitHub Container Registry by the `Develop - Build Container Image` workflow whenever Docker build files change on the `develop` branch:
 
-- `ghcr.io/mkapusnik/duel6r/build` (Linux native build)
-- `ghcr.io/mkapusnik/duel6r/build-w64` (Windows x64 cross-build)
+- `ghcr.io/mkapusnik/duel6r-build` (Linux native build)
+- `ghcr.io/mkapusnik/duel6r-build-w64` (Windows x64 cross-build)
 
 ## Supported platforms
 

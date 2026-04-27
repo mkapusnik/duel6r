@@ -11,16 +11,8 @@ permissions:
 
 jobs:
   build-release-artifact:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: linux
-            runs-on: ubuntu-latest
-          - target: windows
-            runs-on: ubuntu-latest
-
-    runs-on: ${{ matrix.runs-on }}
+    name: Build Release Artifact
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
@@ -34,54 +26,59 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull Linux build image
-        if: matrix.target == 'linux'
         run: docker pull ghcr.io/${{ github.repository }}/build:develop
 
       - name: Pull Windows cross build image
-        if: matrix.target == 'windows'
         run: docker pull ghcr.io/${{ github.repository }}/build-w64:develop
 
-      - name: Build Linux release bundle
-        if: matrix.target == 'linux'
+      - name: Build Linux release files inside shared bundle
         run: |
           docker run --rm \
-            -e OUTPUT_DIR=dist \
+            -e OUTPUT_DIR=build \
+            -e CLEAN_OUTPUT_DIR=ON \
             -v "$PWD:/workspace" \
             ghcr.io/${{ github.repository }}/build:develop
 
-      - name: Build Windows release bundle inside container
-        if: matrix.target == 'windows'
+      - name: Build Windows release files inside shared bundle
         run: |
           docker run --rm \
-            -e OUTPUT_DIR=dist \
+            -e OUTPUT_DIR=build \
             -e BUILD_TESTING=OFF \
             -e RUN_TESTS=OFF \
+            -e CLEAN_OUTPUT_DIR=OFF \
             -v "$PWD:/workspace" \
             ghcr.io/${{ github.repository }}/build-w64:develop
+
+      - name: Verify shared release bundle
+        run: |
+          test -x build/duel6r
+          test -f build/duel6r.exe
+          test -d build/data
+          test -d build/levels
+          test -d build/profiles
+          test -d build/shaders
+          test -d build/sound
+          test -d build/textures
 
       - name: Package release artifact
         id: package
         shell: bash
-        env:
-          ARCHIVE_SUFFIX: ${{ matrix.target }}
         run: |
           safe_ref="${GITHUB_REF_NAME//\//-}"
-          archive_name="duel6r-${safe_ref}-${ARCHIVE_SUFFIX}.zip"
-          mkdir -p artifact
-          cp -a dist artifact/duel6r
+          archive_name="duel6r-${safe_ref}.zip"
 
           ARCHIVE_NAME="$archive_name" python - <<'PY'
           import os
           import zipfile
 
           archive_name = os.environ["ARCHIVE_NAME"]
-          root = os.path.join("artifact", "duel6r")
+          root = "build"
 
           with zipfile.ZipFile(archive_name, "w", compression=zipfile.ZIP_DEFLATED) as archive:
               for current_root, _, files in os.walk(root):
                   for file_name in files:
                       path = os.path.join(current_root, file_name)
-                      archive.write(path, os.path.relpath(path, "artifact"))
+                      archive.write(path, path)
           PY
 
           echo "archive_name=${archive_name}" >> "$GITHUB_OUTPUT"

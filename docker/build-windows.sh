@@ -2,13 +2,14 @@
 set -euo pipefail
 
 workspace_dir="${WORKSPACE_DIR:-/workspace}"
-output_dir="${OUTPUT_DIR:-build-win}"
+output_dir="${OUTPUT_DIR:-build}"
 build_type="${BUILD_TYPE:-Release}"
 renderer="${D6R_RENDERER:-gl4}"
 with_lua="${D6R_WITH_LUA:-ON}"
 build_testing="${BUILD_TESTING:-ON}"
 run_tests="${RUN_TESTS:-OFF}"
 toolchain_file="${TOOLCHAIN_FILE:-/opt/toolchains/mingw-w64-x86_64.cmake}"
+clean_output_dir="${CLEAN_OUTPUT_DIR:-OFF}"
 
 tmp_build_dir="$(mktemp -d /tmp/duel6r-build-win-XXXXXX)"
 cleanup() {
@@ -36,7 +37,9 @@ if [[ "${run_tests}" == "ON" ]]; then
   exit 1
 fi
 
-rm -rf "${workspace_dir}/${output_dir}"
+if [[ "${clean_output_dir}" == "ON" ]]; then
+  rm -rf "${workspace_dir}/${output_dir}"
+fi
 mkdir -p "${workspace_dir}/${output_dir}"
 
 source_binary="${tmp_build_dir}/duel6r.exe"
@@ -169,4 +172,4 @@ queue.extend(optional_decoder_dlls)
 copy_imported_dependency_closure()
 PY
 
-echo "Windows runtime bundle written to ${workspace_dir}/${output_dir}"
+echo "Windows runtime files written to ${workspace_dir}/${output_dir}"
