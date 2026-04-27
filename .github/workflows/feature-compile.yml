@@ -31,13 +31,13 @@ jobs:
           password: ${{ github.token }}
 
       - name: Pull build image
-        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+        run: docker pull ghcr.io/${{ github.repository }}/build:develop
 
       - name: Build inside container
         run: |
           docker run --rm \
             -v "$PWD:/workspace" \
-            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+            ghcr.io/${{ github.repository }}/build:develop
 
       - name: Verify build output
         run: test -x build/duel6r

@@ -39,7 +39,7 @@ jobs:
         id: meta-linux
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/build-linux
+          images: ghcr.io/${{ github.repository }}/build
           tags: |
             type=raw,value=develop
             type=sha,prefix=sha-

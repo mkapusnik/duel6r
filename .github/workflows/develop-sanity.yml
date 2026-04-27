@@ -22,7 +22,7 @@ jobs:
           password: ${{ github.token }}
 
       - name: Pull build image
-        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+        run: docker pull ghcr.io/${{ github.repository }}/build:develop
 
       - name: Build runtime bundle inside container
         run: |
@@ -30,7 +30,7 @@ jobs:
             -e BUILD_TESTING=ON \
             -e RUN_TESTS=ON \
             -v "$PWD:/workspace" \
-            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+            ghcr.io/${{ github.repository }}/build:develop
 
       - name: Verify build output
         run: test -x build/duel6r
@@ -49,7 +49,7 @@ jobs:
           password: ${{ github.token }}
 
       - name: Pull build image
-        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+        run: docker pull ghcr.io/${{ github.repository }}/build:develop
 
       - name: Run lint-equivalent debug build inside container
         run: |
@@ -57,7 +57,7 @@ jobs:
             -e BUILD_TYPE=Debug \
             -e OUTPUT_DIR=build-lint \
             -v "$PWD:/workspace" \
-            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+            ghcr.io/${{ github.repository }}/build:develop
 
       - name: Verify lint-equivalent build output
         run: test -x build-lint/duel6r
