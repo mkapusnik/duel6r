@@ -42,15 +42,15 @@ docker run --rm -v "$PWD:/workspace" ghcr.io/mkapusnik/duel6r-build:develop
 The Windows nightly/release artifacts are built on Linux runners via a dedicated cross image:
 
 ```sh
-docker run --rm -v "$PWD:/workspace" -e OUTPUT_DIR=build-win ghcr.io/mkapusnik/duel6r-build-w64:develop
+docker run --rm -v "$PWD:/workspace" -e OUTPUT_DIR=build-win ghcr.io/mkapusnik/duel6r/build-w64:develop
 ```
 
 ### Build image publication
 
 The build images are published to GitHub Container Registry by the `Develop - Build Container Image` workflow whenever Docker build files change on the `develop` branch:
 
-- `ghcr.io/mkapusnik/duel6r-build` (Linux native build)
-- `ghcr.io/mkapusnik/duel6r-build-w64` (Windows x64 cross-build)
+- `ghcr.io/mkapusnik/duel6r/build` (Linux native build)
+- `ghcr.io/mkapusnik/duel6r/build-w64` (Windows x64 cross-build)
 
 ## Supported platforms
 

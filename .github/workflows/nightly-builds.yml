@@ -34,11 +34,11 @@ jobs:
 
       - name: Pull Linux build image
         if: matrix.target == 'linux'
-        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+        run: docker pull ghcr.io/${{ github.repository }}/build:develop
 
       - name: Pull Windows cross build image
         if: matrix.target == 'windows'
-        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build-w64:develop
+        run: docker pull ghcr.io/${{ github.repository }}/build-w64:develop
 
       - name: Build Linux nightly bundle inside container
         if: matrix.target == 'linux'
@@ -49,7 +49,7 @@ jobs:
             -e OUTPUT_DIR=dist \
             -e RUN_TESTS=ON \
             -v "$PWD:/workspace" \
-            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+            ghcr.io/${{ github.repository }}/build:develop
 
       - name: Build Windows nightly bundle inside container
         if: matrix.target == 'windows'
@@ -60,7 +60,7 @@ jobs:
             -e OUTPUT_DIR=dist \
             -e RUN_TESTS=OFF \
             -v "$PWD:/workspace" \
-            ghcr.io/${{ github.repository_owner }}/duel6r-build-w64:develop
+            ghcr.io/${{ github.repository }}/build-w64:develop
 
       - name: Package nightly bundle
         id: package
