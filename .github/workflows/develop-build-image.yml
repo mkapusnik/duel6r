@@ -37,7 +37,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta-linux
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/build
           tags: |
@@ -45,7 +45,7 @@ jobs:
             type=sha,prefix=sha-
 
       - name: Build and push Linux build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
@@ -68,7 +68,7 @@ jobs:
 
       - name: Extract Docker metadata (Windows cross)
         id: meta-win
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v7
         with:
           images: ghcr.io/${{ github.repository }}/build-w64
           tags: |
