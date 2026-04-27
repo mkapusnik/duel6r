@@ -24,10 +24,10 @@ jobs:
           password: ${{ github.token }}
 
       - name: Pull Linux build image
-        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+        run: docker pull ghcr.io/${{ github.repository }}/build:develop
 
       - name: Pull Windows cross build image
-        run: docker pull ghcr.io/${{ github.repository_owner }}/duel6r-build-w64:develop
+        run: docker pull ghcr.io/${{ github.repository }}/build-w64:develop
 
       - name: Build Linux nightly files inside shared bundle
         run: |
@@ -37,7 +37,7 @@ jobs:
             -e RUN_TESTS=ON \
             -e CLEAN_OUTPUT_DIR=ON \
             -v "$PWD:/workspace" \
-            ghcr.io/${{ github.repository_owner }}/duel6r-build:develop
+            ghcr.io/${{ github.repository }}/build:develop
 
       - name: Build Windows nightly files inside shared bundle
         run: |
@@ -47,7 +47,7 @@ jobs:
             -e RUN_TESTS=OFF \
             -e CLEAN_OUTPUT_DIR=OFF \
             -v "$PWD:/workspace" \
-            ghcr.io/${{ github.repository_owner }}/duel6r-build-w64:develop
+            ghcr.io/${{ github.repository }}/build-w64:develop
 
       - name: Verify shared nightly bundle
         run: |

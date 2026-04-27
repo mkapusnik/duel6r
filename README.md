@@ -63,8 +63,8 @@ The final shared release bundle is `build/` with the Linux binary (`duel6r`), th
 
 The build images are published to GitHub Container Registry by the `Develop - Build Container Image` workflow whenever Docker build files change on the `develop` branch:
 
-- `ghcr.io/mkapusnik/duel6r-build` (Linux native build)
-- `ghcr.io/mkapusnik/duel6r-build-w64` (Windows x64 cross-build)
+- `ghcr.io/mkapusnik/duel6r/build` (Linux native build)
+- `ghcr.io/mkapusnik/duel6r/build-w64` (Windows x64 cross-build)
 
 ## Supported platforms
 
