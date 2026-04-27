@@ -17,10 +17,9 @@ permissions:
   packages: write
 
 jobs:
-  publish-build-image:
-    name: Publish Build Image
+  build-image-linux:
+    name: Publish Linux Build Image
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -36,7 +35,7 @@ jobs:
         id: meta-linux
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/duel6r-build
+          images: ghcr.io/${{ github.repository }}/build-linux
           tags: |
             type=raw,value=develop
             type=sha,prefix=sha-
@@ -49,11 +48,25 @@ jobs:
           tags: ${{ steps.meta-linux.outputs.tags }}
           labels: ${{ steps.meta-linux.outputs.labels }}
 
+  build-image-windows:
+    name: Publish Windows Build Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract Docker metadata (Windows cross)
         id: meta-win
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/duel6r-build-w64
+          images: ghcr.io/${{ github.repository }}/build-w64
           tags: |
             type=raw,value=develop
             type=sha,prefix=sha-
