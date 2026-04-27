@@ -70,6 +70,32 @@ search_roots.extend(pathlib.Path("/usr/lib/gcc/x86_64-w64-mingw32").glob("*/"))
 seen = set()
 queue = [exe_path]
 
+optional_sdl_mixer_dll_prefixes = (
+    "flac",
+    "fluidsynth",
+    "gme",
+    "libflac",
+    "libfluidsynth",
+    "libgme",
+    "libmikmod",
+    "libmodplug",
+    "libmpg123",
+    "libogg",
+    "libopus",
+    "libvorbis",
+    "libwavpack",
+    "libxmp",
+    "mikmod",
+    "modplug",
+    "mpg123",
+    "ogg",
+    "opus",
+    "vorbis",
+    "vorbisfile",
+    "wavpack",
+    "xmp",
+)
+
 
 def imported_dlls(path: pathlib.Path) -> list[str]:
     result = subprocess.run(
@@ -102,22 +128,45 @@ def resolve_dll(name: str) -> pathlib.Path | None:
     return None
 
 
-while queue:
-    current = queue.pop(0)
-    for dll_name in imported_dlls(current):
-        normalized = dll_name.lower()
-        if normalized in seen:
-            continue
-        seen.add(normalized)
+def copy_dll(path: pathlib.Path) -> pathlib.Path:
+    target = dist_dir / path.name
+    if not target.exists():
+        shutil.copy2(path, target)
+    return target
 
-        resolved = resolve_dll(dll_name)
-        if resolved is None:
-            continue
 
-        target = dist_dir / resolved.name
-        if not target.exists():
-            shutil.copy2(resolved, target)
-            queue.append(target)
+def copy_imported_dependency_closure() -> None:
+    while queue:
+        current = queue.pop(0)
+        for dll_name in imported_dlls(current):
+            normalized = dll_name.lower()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+
+            resolved = resolve_dll(dll_name)
+            if resolved is None:
+                continue
+
+            queue.append(copy_dll(resolved))
+
+
+copy_imported_dependency_closure()
+
+# SDL_mixer loads some music decoders dynamically, so they do not appear in
+# the executable's import table. Bundle the optional decoder DLLs explicitly;
+# libxmp/libmodplug are required for the menu's .xm tracker module on Windows.
+optional_decoder_dlls = []
+for root in search_roots:
+    if not root.exists():
+        continue
+    for path in root.glob("*.dll"):
+        lower_name = path.name.lower()
+        if lower_name.startswith(optional_sdl_mixer_dll_prefixes):
+            optional_decoder_dlls.append(copy_dll(path))
+
+queue.extend(optional_decoder_dlls)
+copy_imported_dependency_closure()
 PY
 
 echo "Windows runtime bundle written to ${workspace_dir}/${output_dir}"
