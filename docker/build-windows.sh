@@ -60,15 +60,47 @@ import sys
 
 exe_path = pathlib.Path(sys.argv[1])
 dist_dir = pathlib.Path(sys.argv[2])
+vcpkg_bin = pathlib.Path("/opt/vcpkg/installed/x64-mingw-dynamic/bin")
 
 search_roots = [
-    pathlib.Path("/opt/vcpkg/installed/x64-mingw-dynamic/bin"),
+    vcpkg_bin,
     pathlib.Path("/usr/x86_64-w64-mingw32/bin"),
 ]
 search_roots.extend(pathlib.Path("/usr/lib/gcc/x86_64-w64-mingw32").glob("*/"))
 
 seen = set()
 queue = [exe_path]
+copied = []
+
+windows_system_dlls = {
+    "advapi32.dll",
+    "bcrypt.dll",
+    "comdlg32.dll",
+    "crypt32.dll",
+    "d3d11.dll",
+    "d3d9.dll",
+    "dwmapi.dll",
+    "dxgi.dll",
+    "gdi32.dll",
+    "imm32.dll",
+    "iphlpapi.dll",
+    "kernel32.dll",
+    "msvcrt.dll",
+    "ole32.dll",
+    "oleaut32.dll",
+    "opengl32.dll",
+    "rpcrt4.dll",
+    "setupapi.dll",
+    "shell32.dll",
+    "shlwapi.dll",
+    "user32.dll",
+    "uuid.dll",
+    "version.dll",
+    "winhttp.dll",
+    "winmm.dll",
+    "winspool.drv",
+    "ws2_32.dll",
+}
 
 optional_sdl_mixer_dll_prefixes = (
     "flac",
@@ -114,8 +146,29 @@ def imported_dlls(path: pathlib.Path) -> list[str]:
     return dlls
 
 
-def resolve_dll(name: str) -> pathlib.Path | None:
+def verify_pe64(path: pathlib.Path) -> None:
+    result = subprocess.run(
+        ["x86_64-w64-mingw32-objdump", "-f", str(path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    if "file format pei-x86-64" not in result.stdout:
+        raise RuntimeError(f"{path} is not a 64-bit Windows PE file")
+
+
+def resolve_dll(name: str, origin: pathlib.Path) -> pathlib.Path | None:
     lower_name = name.lower()
+    if lower_name in windows_system_dlls:
+        return None
+
+    origin_candidate = origin.parent / name
+    if origin_candidate.exists():
+        return origin_candidate
+    for path in origin.parent.glob("*.dll"):
+        if path.name.lower() == lower_name:
+            return path
+
     for root in search_roots:
         if not root.exists():
             continue
@@ -129,9 +182,11 @@ def resolve_dll(name: str) -> pathlib.Path | None:
 
 
 def copy_dll(path: pathlib.Path) -> pathlib.Path:
+    verify_pe64(path)
     target = dist_dir / path.name
     if not target.exists():
         shutil.copy2(path, target)
+        copied.append(target.name)
     return target
 
 
@@ -144,29 +199,30 @@ def copy_imported_dependency_closure() -> None:
                 continue
             seen.add(normalized)
 
-            resolved = resolve_dll(dll_name)
+            resolved = resolve_dll(dll_name, current)
             if resolved is None:
                 continue
 
             queue.append(copy_dll(resolved))
 
 
+verify_pe64(exe_path)
 copy_imported_dependency_closure()
 
 # SDL_mixer loads some music decoders dynamically, so they do not appear in
 # the executable's import table. Bundle the optional decoder DLLs explicitly;
 # libxmp/libmodplug are required for the menu's .xm tracker module on Windows.
 optional_decoder_dlls = []
-for root in search_roots:
-    if not root.exists():
-        continue
-    for path in root.glob("*.dll"):
+if vcpkg_bin.exists():
+    for path in vcpkg_bin.glob("*.dll"):
         lower_name = path.name.lower()
         if lower_name.startswith(optional_sdl_mixer_dll_prefixes):
             optional_decoder_dlls.append(copy_dll(path))
 
 queue.extend(optional_decoder_dlls)
 copy_imported_dependency_closure()
+
+(dist_dir / "windows-dependencies.txt").write_text("\n".join(sorted(copied)) + "\n")
 PY
 
 echo "Windows runtime bundle written to ${workspace_dir}/${output_dir}"
