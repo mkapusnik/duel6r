@@ -12,6 +12,10 @@ on:
       - .github/workflows/develop-build-image.yml
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
