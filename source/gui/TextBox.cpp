@@ -34,7 +34,7 @@ namespace Duel6 {
         Textbox *Textbox::focusedTextbox = nullptr;
 
         Textbox::Textbox(Desktop &desk)
-                : Control(desk), focused(false) {
+                : Control(desk), focused(false), labelLeft(false) {
         }
 
         Textbox::~Textbox() {
@@ -51,6 +51,14 @@ namespace Duel6 {
 
             allowedCharacters = allowed;
             text.clear();
+        }
+
+        void Textbox::setLabel(const std::string &label) {
+            this->label = label;
+        }
+
+        void Textbox::setLabelLeft(bool labelLeft) {
+            this->labelLeft = labelLeft;
         }
 
         void Textbox::keyEvent(const KeyPressEvent &event) {
@@ -119,6 +127,11 @@ namespace Duel6 {
             drawFrame(renderer, x - 2, y + 2, w + 4, 22, true);
             renderer.quadXY(Vector(x, y - 17), Vector(w, 17), Color::WHITE);
             font.print(x, y - 16, Color(0), text + (focused ? "_" : ""));
+
+            if (!label.empty()) {
+                Int32 labelX = labelLeft ? x - Int32(label.length() * 8) - 12 : x + w + 12;
+                font.print(labelX, y - 16, Color(0), label);
+            }
         }
     }
 }

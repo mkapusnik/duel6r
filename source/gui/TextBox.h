@@ -39,7 +39,9 @@ namespace Duel6 {
             Int32 max, width;
             std::string text;
             std::string allowedCharacters;
+            std::string label;
             bool focused;
+            bool labelLeft;
 
             static Textbox *focusedTextbox;
 
@@ -49,6 +51,10 @@ namespace Duel6 {
             ~Textbox();
 
             void setPosition(int X, int Y, int W, int M, const std::string &allowed);
+
+            void setLabel(const std::string &label);
+
+            void setLabelLeft(bool labelLeft);
 
             const std::string &getText() const;
 
