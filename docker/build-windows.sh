@@ -68,6 +68,7 @@ vcpkg_bin = pathlib.Path("/opt/vcpkg/installed/x64-mingw-dynamic/bin")
 search_roots = [
     vcpkg_bin,
     pathlib.Path("/usr/x86_64-w64-mingw32/bin"),
+    pathlib.Path("/usr/x86_64-w64-mingw32/lib"),
 ]
 search_roots.extend(pathlib.Path("/usr/lib/gcc/x86_64-w64-mingw32").glob("*/"))
 
@@ -227,5 +228,8 @@ copy_imported_dependency_closure()
 
 (dist_dir / "windows-dependencies.txt").write_text("\n".join(sorted(copied)) + "\n")
 PY
+
+python3 "${workspace_dir}/tests/WindowsBundleDependencyTests.py" \
+  --dist-dir "${workspace_dir}/${output_dir}"
 
 echo "Windows runtime files written to ${workspace_dir}/${output_dir}"
