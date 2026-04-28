@@ -43,6 +43,7 @@
 #include "gamemodes/Predator.h"
 
 #define D6_ALL_CHR  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 -=\\~!@#$%^&*()_+|[];',./<>?:{}"
+#define D6_NUM_CHR  "0123456789"
 
 namespace Duel6 {
     Menu::Menu(AppService &appService)
@@ -115,7 +116,7 @@ namespace Duel6 {
         });
 
         eloListBox = new Gui::ListBox(gui, true);
-        eloListBox->setPosition(594, 539, 24, 19, 16);
+        eloListBox->setPosition(594, 403, 24, 10, 16);
 
         loadPersonProfiles(D6_FILE_PROFILES);
 
@@ -177,7 +178,7 @@ namespace Duel6 {
                 "    Name   |   Elo | Pts | Win | Kill | Assist | Pen | Death |  K/D | Shot | Acc. | GmTm |  Dmg ");
 
         auto eloLabel = new Gui::Label(gui);
-        eloLabel->setPosition(594, 560, 210, 18);
+        eloLabel->setPosition(594, 424, 210, 18);
         eloLabel->setCaption("Elo scoreboard");
 
         auto personsLabel = new Gui::Label(gui);
@@ -240,7 +241,7 @@ namespace Duel6 {
         for (auto &gameMode : gameModes) {
             gameModeSwitch->addItem(gameMode->getName());
         }
-        gameModeSwitch->setPosition(10, 0, 330, 20);
+        gameModeSwitch->setPosition(594, 532, 200, 20);
         gameModeSwitch->onToggled([this](Int32 selectedIndex) {
             if (selectedIndex < 2) {
                 playerListBox->onColorize(Gui::ListBox::defaultColorize);
@@ -252,13 +253,25 @@ namespace Duel6 {
             }
         });
 
+        auto gameSettingsLabel = new Gui::Label(gui);
+        gameSettingsLabel->setPosition(594, 560, 210, 18);
+        gameSettingsLabel->setCaption("Game Settings");
+
         globalAssistanceCheckBox = new Gui::CheckBox(gui, true);
         globalAssistanceCheckBox->setLabel("Assistance");
-        globalAssistanceCheckBox->setPosition(11, -21, 130, 20);
+        globalAssistanceCheckBox->setPosition(594, 504, 170, 20);
 
         quickLiquidCheckBox = new Gui::CheckBox(gui, true);
         quickLiquidCheckBox->setLabel("Quick Liquid");
-        quickLiquidCheckBox->setPosition(151, -21, 150, 20);
+        quickLiquidCheckBox->setPosition(594, 476, 170, 20);
+
+        auto roundsLabel = new Gui::Label(gui);
+        roundsLabel->setPosition(626, 449, 85, 20);
+        roundsLabel->setCaption("Rounds");
+
+        roundsTextbox = new Gui::Textbox(gui);
+        roundsTextbox->setPosition(594, 452, 4, 4, D6_NUM_CHR);
+        updateRoundsTextbox();
 
         backgroundCount = File::countFiles(D6_TEXTURE_BCG_PATH);
         levelList.initialize(D6_FILE_LEVEL, D6_LEVEL_EXTENSION);
@@ -443,6 +456,8 @@ namespace Duel6 {
     }
 
     void Menu::play(std::vector<std::string> levels) {
+        applyRoundsTextbox();
+
         if (playerListBox->size() < 2) {
             showMessage("Can't play alone ...");
             SDL_Event event;
@@ -529,7 +544,27 @@ namespace Duel6 {
         playersLabel->setCaption(Format("Players {0,3}") << playerListBox->size());
     }
 
+    void Menu::updateRoundsTextbox() {
+        if (roundsTextbox == nullptr) {
+            return;
+        }
+
+        roundsTextbox->setText(Format("{0}") << game->getSettings().getMaxRounds());
+    }
+
+    void Menu::applyRoundsTextbox() {
+        const std::string &roundsText = roundsTextbox->getText();
+        Int32 maxRounds = roundsText.empty() ? 0 : std::stoi(roundsText);
+        game->getSettings().setMaxRounds(maxRounds);
+        roundsTextbox->setFocused(false);
+        updateRoundsTextbox();
+    }
+
     void Menu::addPerson() {
+        if (!textbox->isFocused()) {
+            return;
+        }
+
         const std::string &personName = textbox->getText();
 
         if (!personName.empty() && !persons.contains(personName)) {
@@ -553,6 +588,7 @@ namespace Duel6 {
     }
 
     void Menu::beforeStart(Context *prevContext) {
+        updateRoundsTextbox();
         loadPersonData(D6_FILE_PHIST);
         joyRescan();
         SDL_ShowCursor(SDL_ENABLE);
@@ -589,7 +625,11 @@ namespace Duel6 {
         gui.keyEvent(event);
 
         if (event.getCode() == SDLK_RETURN) {
-            addPerson();
+            if (roundsTextbox->isFocused()) {
+                applyRoundsTextbox();
+            } else {
+                addPerson();
+            }
         }
 
         if (event.getCode() == SDLK_F1) {

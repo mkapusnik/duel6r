@@ -39,6 +39,9 @@ namespace Duel6 {
             Int32 max, width;
             std::string text;
             std::string allowedCharacters;
+            bool focused;
+
+            static Textbox *focusedTextbox;
 
         public:
             Textbox(Desktop &desk);
@@ -49,6 +52,12 @@ namespace Duel6 {
 
             const std::string &getText() const;
 
+            void setText(const std::string &text);
+
+            bool isFocused() const;
+
+            void setFocused(bool focused);
+
             void flush();
 
             void draw(Renderer &renderer, const Font &font) const override;
@@ -56,6 +65,8 @@ namespace Duel6 {
             void textInputEvent(const TextInputEvent &event) override;
 
             void keyEvent(const KeyPressEvent &event) override;
+
+            void mouseButtonEvent(const MouseButtonEvent &event) override;
 
             Control::Type getType() const override {
                 return Control::Type::Textbox;

@@ -74,6 +74,7 @@ namespace Duel6 {
         Gui::ListBox *eloListBox;
         Gui::Spinner *controlSwitch[D6_MAX_PLAYERS];
         Gui::Textbox *textbox;
+        Gui::Textbox *roundsTextbox;
         Gui::Spinner *gameModeSwitch;
         Gui::CheckBox *globalAssistanceCheckBox;
         Gui::CheckBox *quickLiquidCheckBox;
@@ -158,6 +159,10 @@ namespace Duel6 {
         void removePlayer(Int32 c);
 
         void updatePlayerCount();
+
+        void updateRoundsTextbox();
+
+        void applyRoundsTextbox();
 
         void rebuildTable();
 

@@ -1,8 +1,8 @@
 # Main Menu Layout Design
 
-This document schematically describes the main menu GUI layout built in `source/Menu.cpp`.
+This document schematically describes the main menu GUI layout built in [`source/Menu.cpp`](source/Menu.cpp).
 
-The menu uses an 800 x 700 logical coordinate space, centered in the current window by `Gui::Desktop::screenSize(...)`.
+The menu uses an 800 x 700 logical coordinate space, centered in the current window by [`Gui::Desktop::screenSize(...)`](source/gui/Desktop.cpp:48).
 Coordinates below are approximate logical positions from the top-left corner of the menu canvas.
 
 ## Overall layout
@@ -12,7 +12,7 @@ Logical menu canvas: 800 x 700
 
 Y=700  (top in gameplay coordinate system)
 ┌────────────────────────────────────────────────────────────────────────────────┐
-│ [Game mode spinner: x=10,w=330]  [ Play (F1) ] [ Clear (F3) ] [ Quit (ESC) ]  │
+│                                      [ Play (F1) ] [ Clear (F3) ] [ Quit ]     │
 │                                                                                │
 │                                                                                │
 │                                                                                │
@@ -32,15 +32,19 @@ Y=700  (top in gameplay coordinate system)
 │                                                                                │
 │                                                                                │
 │                                                                                │
-│ Persons panel             Players panel       Controller column     Elo panel   │
-│ ┌──────────────────┐      ┌─────────────┐     ┌────────────────┐   ┌─────────┐ │
-│ │ personListBox    │      │playerListBox│     │controlSwitches │   │eloList  │ │
-│ │ x=10,y=539       │      │x=200,y=541  │     │x=330,y=539...  │   │x=594... │ │
-│ │ 20 chars x15 rows│      │15 chars     │     │+ detect D btns │   │24 chars │ │
-│ └──────────────────┘      └─────────────┘     └────────────────┘   └─────────┘ │
-│ Persons                   Players ### [E][S]  Controller [D]      Elo scoreboard│
-│                                                                                │
-│ [Assistance checkbox] [Quick Liquid checkbox] [Rounds label] [Rounds textbox]  │
+│ Persons panel             Players panel       Controller column   Settings      │
+│ ┌──────────────────┐      ┌─────────────┐     ┌────────────────┐ ┌───────────┐ │
+│ │ personListBox    │      │playerListBox│     │controlSwitches │ │Game       │ │
+│ │ x=10,y=539       │      │x=200,y=541  │     │x=330,y=539...  │ │Settings   │ │
+│ │ 20 chars x15 rows│      │15 chars     │     │+ detect D btns │ │Game Mode  │ │
+│ └──────────────────┘      └─────────────┘     └────────────────┘ │[ ] Assist │ │
+│ Persons                   Players ### [E][S]  Controller [D]     │[ ] Liquid │ │
+│                                                                  │[0000] Rnds│ │
+│                                                                  └───────────┘ │
+│                                                                  Elo panel     │
+│                                                                  ┌───────────┐ │
+│                                                                  │eloListBox │ │
+│                                                                  └───────────┘ │
 └────────────────────────────────────────────────────────────────────────────────┘
 Y=0  (bottom in gameplay coordinate system)
 ```
@@ -49,13 +53,14 @@ Y=0  (bottom in gameplay coordinate system)
 
 ### Header controls
 
+The top header keeps only direct action buttons. Game mode selection lives in the right-side [`Game Settings`](DESIGN.md#game-settings-column) column.
+
 ```text
-x=10                         x=350           x=505           x=660
-┌──────────────────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐
-│ Game mode spinner        │  │ Play (F1)  │  │ Clear (F3) │  │ Quit (ESC) │
-│ Deathmatch / Predator /  │  │            │  │            │  │            │
-│ Team modes               │  │            │  │            │  │            │
-└──────────────────────────┘  └────────────┘  └────────────┘  └────────────┘
+x=350           x=505           x=660
+┌────────────┐  ┌────────────┐  ┌────────────┐
+│ Play (F1)  │  │ Clear (F3) │  │ Quit (ESC) │
+│            │  │            │  │            │
+└────────────┘  └────────────┘  └────────────┘
 ```
 
 ### Scoreboard area
@@ -93,34 +98,65 @@ Persons                    Players ### [E][S]        Controller [D]
                             S = random shuffle
 ```
 
-### Elo panel
+### Game Settings column
+
+The game settings are grouped in a dedicated right-side vertical column above the Elo panel.
 
 ```text
-x=594,y=560 label: Elo scoreboard
+x=594,y=560 label: Game Settings
 
-x=594,y=539 listbox:
+x=594,y=532
+┌────────────────────────┐
+│ Game mode spinner      │
+│ Deathmatch / Predator  │
+│ Team modes             │
+└────────────────────────┘
+
+x=594,y=504
+┌────────────────┐
+│ [ ] Assistance │
+└────────────────┘
+
+x=594,y=476
+┌──────────────────┐
+│ [ ] Quick Liquid │
+└──────────────────┘
+
+x=594,y=452          x=626,y=449
+┌──────┐             ┌───────────┐
+│ 0000 │             │ Rounds    │
+└──────┘             └───────────┘
+```
+
+Vertical order:
+1. Game mode spinner
+2. Assistance checkbox
+3. Quick Liquid checkbox
+4. Round-count textbox, aligned vertically with the checkboxes on the left, with the `Rounds` label to its right
+
+Behavior:
+- The game mode spinner selects the active ruleset before starting a game.
+- `Assistance` toggles global assist handling before starting a game.
+- `Quick Liquid` toggles quick liquid behavior before starting a game.
+- `Rounds` is a numeric textbox bound to [`GameSettings::maxRounds`](source/GameSettings.h:55).
+  - `0` means no round limit, matching the existing configuration behavior.
+  - Positive values limit the match to that many rounds.
+  - The value is applied when pressing Enter while the textbox is focused, and again immediately before starting a match through [`Menu::applyRoundsTextbox()`](source/Menu.cpp:552).
+
+### Elo panel
+
+The Elo panel is below the Game Settings column.
+
+```text
+x=594,y=424 label: Elo scoreboard
+
+x=594,y=403 listbox:
 ┌────────────────────────┐
 │ eloListBox             │
-│ 24 chars x 19 rows     │
+│ 24 chars x 10 rows     │
 │ Elo rank/name/score    │
 └────────────────────────┘
 ```
-
-### Bottom settings row
-
-```text
-x=11                  x=151                    x=330              x=417
-┌──────────────────┐  ┌────────────────────┐   ┌────────────┐     ┌──────┐
-│ [ ] Assistance   │  │ [ ] Quick Liquid   │   │ Rounds     │     │ 0000 │
-└──────────────────┘  └────────────────────┘   └────────────┘     └──────┘
-```
-
-- `Assistance` toggles global assist handling before starting a game.
-- `Quick Liquid` toggles quick liquid behavior before starting a game.
-- `Rounds` is a numeric textbox bound to `GameSettings::maxRounds`.
-  - `0` means no round limit, matching the existing configuration behavior.
-  - Positive values limit the match to that many rounds.
-  - The value is applied when pressing Enter while the textbox is focused, and again immediately before starting a match.
 
 ## Text input behavior
 

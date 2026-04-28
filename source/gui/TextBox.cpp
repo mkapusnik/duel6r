@@ -31,11 +31,16 @@
 
 namespace Duel6 {
     namespace Gui {
+        Textbox *Textbox::focusedTextbox = nullptr;
+
         Textbox::Textbox(Desktop &desk)
-                : Control(desk) {
+                : Control(desk), focused(false) {
         }
 
         Textbox::~Textbox() {
+            if (focusedTextbox == this) {
+                focusedTextbox = nullptr;
+            }
         }
 
         void Textbox::setPosition(int X, int Y, int W, int M, const std::string &allowed) {
@@ -49,12 +54,16 @@ namespace Duel6 {
         }
 
         void Textbox::keyEvent(const KeyPressEvent &event) {
-            if (!text.empty() && event.getCode() == SDLK_BACKSPACE) {
+            if (focused && !text.empty() && event.getCode() == SDLK_BACKSPACE) {
                 text.pop_back();
             }
         }
 
         void Textbox::textInputEvent(const TextInputEvent &event) {
+            if (!focused) {
+                return;
+            }
+
             const std::string &newText = event.getText();
             for (auto iter = newText.cbegin(); iter != newText.cend(); ++iter) {
                 char letter = *iter;
@@ -64,8 +73,40 @@ namespace Duel6 {
             }
         }
 
+        void Textbox::mouseButtonEvent(const MouseButtonEvent &event) {
+            if (event.getButton() != SysEvent::MouseButton::LEFT || !event.isPressed()) {
+                return;
+            }
+
+            int w = (width << 3) + 8;
+            bool requestedFocus = Control::mouseIn(event, x - 2, y + 2, w + 4, 22);
+            if (requestedFocus && focusedTextbox != this) {
+                if (focusedTextbox != nullptr) {
+                    focusedTextbox->focused = false;
+                }
+                focusedTextbox = this;
+            }
+
+            setFocused(requestedFocus);
+        }
+
         const std::string &Textbox::getText() const {
             return text;
+        }
+
+        void Textbox::setText(const std::string &text) {
+            this->text = text.substr(0, max);
+        }
+
+        bool Textbox::isFocused() const {
+            return focused;
+        }
+
+        void Textbox::setFocused(bool focused) {
+            this->focused = focused;
+            if (!focused && focusedTextbox == this) {
+                focusedTextbox = nullptr;
+            }
         }
 
         void Textbox::flush() {
@@ -77,7 +118,7 @@ namespace Duel6 {
 
             drawFrame(renderer, x - 2, y + 2, w + 4, 22, true);
             renderer.quadXY(Vector(x, y - 17), Vector(w, 17), Color::WHITE);
-            font.print(x, y - 16, Color(0), text + "_");
+            font.print(x, y - 16, Color(0), text + (focused ? "_" : ""));
         }
     }
 }
