@@ -3,6 +3,7 @@ cmake-build-debug/*
 cmake-build-release/*
 build/*
 build-debug/*
+build-test/*
 build-typecheck/*
 dist/*
 .cache/*

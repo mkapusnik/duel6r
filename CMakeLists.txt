@@ -140,6 +140,14 @@ set(D6R_SOURCES
         source/Material.h
         source/Menu.cpp
         source/Menu.h
+        source/client/ConnectionPlan.cpp
+        source/client/ConnectionPlan.h
+        source/client/LocalServerLauncher.cpp
+        source/client/LocalServerLauncher.h
+        source/network/Protocol.cpp
+        source/network/Protocol.h
+        source/network/ProtocolSerialization.cpp
+        source/network/ProtocolSerialization.h
         source/msdir.c
         source/msdir.h
         source/Orientation.h
@@ -474,6 +482,19 @@ if (D6R_WITH_LUA)
             )
 endif (D6R_WITH_LUA)
 
+set(D6R_SERVER_APP_NAME "duel6r-server" CACHE STRING "Filename of the headless authoritative server.")
+set(D6R_SERVER_SOURCES
+        source/network/Protocol.cpp
+        source/network/Protocol.h
+        source/network/ProtocolSerialization.cpp
+        source/network/ProtocolSerialization.h
+        source/server/HeadlessServer.cpp
+        source/server/HeadlessServer.h
+        source/server/ServerConfig.cpp
+        source/server/ServerConfig.h
+        source/server/ServerMain.cpp
+        )
+
 if (BUILD_TESTING)
     set(D6R_TEST_APP_NAME "duel6r-tests")
     file(TO_CMAKE_PATH "${CMAKE_SOURCE_DIR}" D6R_TEST_SOURCE_DIR)
@@ -483,7 +504,14 @@ if (BUILD_TESTING)
             tests/FormatTests.cpp
             tests/JsonTests.cpp
             tests/MathTests.cpp
+            tests/NetworkProtocolTests.cpp
             tests/ResourceValidationTests.cpp
+            source/client/ConnectionPlan.cpp
+            source/client/LocalServerLauncher.cpp
+            source/network/Protocol.cpp
+            source/network/ProtocolSerialization.cpp
+            source/server/HeadlessServer.cpp
+            source/server/ServerConfig.cpp
             source/File.cpp
             source/Format.cpp
             source/msdir.c
@@ -517,6 +545,12 @@ set(D6R_APP_NAME "duel6r" CACHE STRING "Filename of the application.")
 set(D6R_APP_DEBUG_NAME "duel6rd" CACHE STRING "Filename of the debug version of the application.")
 add_executable(${D6R_APP_NAME} ${D6R_SOURCES})
 set_target_properties(${D6R_APP_NAME} PROPERTIES VERSION 6.0.0 DEBUG_OUTPUT_NAME ${D6R_APP_DEBUG_NAME})
+
+add_executable(${D6R_SERVER_APP_NAME} ${D6R_SERVER_SOURCES})
+set_target_properties(${D6R_SERVER_APP_NAME} PROPERTIES VERSION 6.0.0)
+if (MINGW)
+    set_property(TARGET ${D6R_SERVER_APP_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -mconsole")
+endif (MINGW)
 
 #########################################################################
 # External dependencies
