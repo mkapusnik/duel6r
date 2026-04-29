@@ -226,6 +226,18 @@ if vcpkg_bin.exists():
 queue.extend(optional_decoder_dlls)
 copy_imported_dependency_closure()
 
+# Some MinGW runtime DLLs can be imported by bundled C++ support DLLs and are
+# required before the Windows loader can start the process. Bundle them
+# explicitly so a clean package never falls back to an incompatible PATH copy.
+explicit_runtime_dlls = (
+    "libwinpthread-1.dll",
+)
+for dll_name in explicit_runtime_dlls:
+    resolved = resolve_dll(dll_name, exe_path)
+    if resolved is not None:
+        queue.append(copy_dll(resolved))
+copy_imported_dependency_closure()
+
 (dist_dir / "windows-dependencies.txt").write_text("\n".join(sorted(copied)) + "\n")
 PY
 
