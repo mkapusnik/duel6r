@@ -12,20 +12,34 @@ namespace Duel6::Server {
         return config;
     }
 
-    Network::HandshakeAccept HeadlessServer::acceptHandshake(const Network::HandshakeRequest &request) {
+    HandshakeResult HeadlessServer::validateHandshake(const Network::HandshakeRequest &request) const {
+        HandshakeResult result;
         if (request.protocolVersion != Network::ProtocolVersion) {
-            throw std::invalid_argument("Client protocol version is incompatible");
+            result.reject.reason = Network::RejectReason::IncompatibleProtocol;
+            result.reject.detail = "Client protocol version is incompatible";
+            return result;
         }
 
         if (!config.authToken.empty() && request.authToken != config.authToken) {
-            throw std::invalid_argument("Client authentication token is invalid");
+            result.reject.reason = Network::RejectReason::AuthenticationFailed;
+            result.reject.detail = "Client authentication token is invalid";
+            return result;
         }
 
-        Network::HandshakeAccept accept;
-        accept.clientId = nextClientId++;
-        accept.serverTickRate = config.tickRate;
-        accept.serverName = config.serverName;
-        return accept;
+        result.accepted = true;
+        result.accept.serverTickRate = config.tickRate;
+        result.accept.serverName = config.serverName;
+        return result;
+    }
+
+    Network::HandshakeAccept HeadlessServer::acceptHandshake(const Network::HandshakeRequest &request) {
+        HandshakeResult result = validateHandshake(request);
+        if (!result.accepted) {
+            throw std::invalid_argument(result.reject.detail);
+        }
+
+        result.accept.clientId = nextClientId++;
+        return result.accept;
     }
 
     int HeadlessServer::run(std::ostream &output) {

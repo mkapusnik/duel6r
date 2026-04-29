@@ -24,8 +24,20 @@ namespace Duel6::Network {
     std::string serializeHandshakeReject(const HandshakeReject &reject);
     HandshakeReject deserializeHandshakeReject(const std::string &payload);
 
+    std::string serializeLobbyState(const LobbyState &state);
+    LobbyState deserializeLobbyState(const std::string &payload);
+
     std::string serializeInputCommand(const InputCommand &command);
     InputCommand deserializeInputCommand(const std::string &payload);
+
+    std::string serializeSnapshot(const Snapshot &snapshot);
+    Snapshot deserializeSnapshot(const std::string &payload);
+
+    std::string serializeEvent(const Event &event);
+    Event deserializeEvent(const std::string &payload);
+
+    std::string serializeDisconnect(const Disconnect &disconnect);
+    Disconnect deserializeDisconnect(const std::string &payload);
 
     std::string serializeClientConnectionConfig(const ClientConnectionConfig &config);
     ClientConnectionConfig deserializeClientConnectionConfig(const std::string &payload);

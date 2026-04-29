@@ -7,6 +7,12 @@
 #include "../network/Protocol.h"
 
 namespace Duel6::Server {
+    struct HandshakeResult {
+        bool accepted = false;
+        Network::HandshakeAccept accept;
+        Network::HandshakeReject reject;
+    };
+
     class HeadlessServer {
     private:
         ServerConfig config;
@@ -17,6 +23,7 @@ namespace Duel6::Server {
 
         const ServerConfig &getConfig() const;
 
+        HandshakeResult validateHandshake(const Network::HandshakeRequest &request) const;
         Network::HandshakeAccept acceptHandshake(const Network::HandshakeRequest &request);
 
         int run(std::ostream &output);

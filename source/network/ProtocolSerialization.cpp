@@ -126,6 +126,36 @@ namespace Duel6::Network {
                                                                    std::numeric_limits<std::uint16_t>::max()));
         }
 
+        std::uint8_t requiredUint8(const Properties &properties, const std::string &key) {
+            return static_cast<std::uint8_t>(requiredUnsignedLong(properties, key,
+                                                                  std::numeric_limits<std::uint8_t>::max()));
+        }
+
+        bool requiredBool(const Properties &properties, const std::string &key) {
+            const std::string value = requiredString(properties, key);
+            if (value == "true") {
+                return true;
+            }
+            if (value == "false") {
+                return false;
+            }
+            throw std::invalid_argument("Invalid boolean protocol property: " + key);
+        }
+
+        float requiredFloat(const Properties &properties, const std::string &key) {
+            const std::string value = requiredString(properties, key);
+            std::size_t consumed = 0;
+            float parsed = std::stof(value, &consumed);
+            if (consumed != value.size()) {
+                throw std::invalid_argument("Invalid float protocol property: " + key);
+            }
+            return parsed;
+        }
+
+        std::string indexedKey(const std::string &prefix, std::uint32_t index, const std::string &field) {
+            return prefix + "." + std::to_string(index) + "." + field;
+        }
+
         Endpoint endpointFromProperties(const Properties &properties, const std::string &prefix) {
             Endpoint endpoint;
             endpoint.host = requiredString(properties, prefix + ".host");
@@ -283,6 +313,51 @@ namespace Duel6::Network {
         return reject;
     }
 
+    std::string serializeLobbyState(const LobbyState &state) {
+        Properties properties;
+        set(properties, "gameMode", state.gameMode);
+        set(properties, "maxRounds", std::to_string(state.maxRounds));
+        set(properties, "assistance", state.assistance ? "true" : "false");
+        set(properties, "quickLiquid", state.quickLiquid ? "true" : "false");
+        for (const auto &level: state.selectedLevels) {
+            set(properties, "selectedLevel", level);
+        }
+        set(properties, "player.count", std::to_string(state.players.size()));
+        for (std::uint32_t i = 0; i < state.players.size(); ++i) {
+            const LobbyPlayer &player = state.players[i];
+            set(properties, indexedKey("player", i, "playerId"), std::to_string(player.playerId));
+            set(properties, indexedKey("player", i, "clientId"), std::to_string(player.clientId));
+            set(properties, indexedKey("player", i, "displayName"), player.displayName);
+            set(properties, indexedKey("player", i, "team"), std::to_string(player.team));
+            set(properties, indexedKey("player", i, "ready"), player.ready ? "true" : "false");
+        }
+        return serializeProperties(properties);
+    }
+
+    LobbyState deserializeLobbyState(const std::string &payload) {
+        const Properties properties = parseProperties(payload);
+        LobbyState state;
+        state.gameMode = requiredString(properties, "gameMode");
+        state.maxRounds = requiredUint32(properties, "maxRounds");
+        state.assistance = requiredBool(properties, "assistance");
+        state.quickLiquid = requiredBool(properties, "quickLiquid");
+        auto selectedLevels = properties.find("selectedLevel");
+        if (selectedLevels != properties.end()) {
+            state.selectedLevels = selectedLevels->second;
+        }
+        std::uint32_t playerCount = requiredUint32(properties, "player.count");
+        for (std::uint32_t i = 0; i < playerCount; ++i) {
+            LobbyPlayer player;
+            player.playerId = requiredUint32(properties, indexedKey("player", i, "playerId"));
+            player.clientId = requiredUint32(properties, indexedKey("player", i, "clientId"));
+            player.displayName = requiredString(properties, indexedKey("player", i, "displayName"));
+            player.team = requiredUint8(properties, indexedKey("player", i, "team"));
+            player.ready = requiredBool(properties, indexedKey("player", i, "ready"));
+            state.players.push_back(player);
+        }
+        return state;
+    }
+
     std::string serializeInputCommand(const InputCommand &command) {
         Properties properties;
         set(properties, "clientId", std::to_string(command.clientId));
@@ -302,6 +377,76 @@ namespace Duel6::Network {
         command.targetTick = requiredUint32(properties, "targetTick");
         command.actions = requiredUint32(properties, "actions");
         return command;
+    }
+
+    std::string serializeSnapshot(const Snapshot &snapshot) {
+        Properties properties;
+        set(properties, "snapshotId", std::to_string(snapshot.snapshotId));
+        set(properties, "baselineId", std::to_string(snapshot.baselineId));
+        set(properties, "tick", std::to_string(snapshot.tick));
+        set(properties, "roundNumber", std::to_string(snapshot.roundNumber));
+        set(properties, "player.count", std::to_string(snapshot.players.size()));
+        for (std::uint32_t i = 0; i < snapshot.players.size(); ++i) {
+            const PlayerSnapshot &player = snapshot.players[i];
+            set(properties, indexedKey("player", i, "playerId"), std::to_string(player.playerId));
+            set(properties, indexedKey("player", i, "x"), std::to_string(player.x));
+            set(properties, indexedKey("player", i, "y"), std::to_string(player.y));
+            set(properties, indexedKey("player", i, "life"), std::to_string(player.life));
+            set(properties, indexedKey("player", i, "alive"), player.alive ? "true" : "false");
+        }
+        return serializeProperties(properties);
+    }
+
+    Snapshot deserializeSnapshot(const std::string &payload) {
+        const Properties properties = parseProperties(payload);
+        Snapshot snapshot;
+        snapshot.snapshotId = requiredUint32(properties, "snapshotId");
+        snapshot.baselineId = requiredUint32(properties, "baselineId");
+        snapshot.tick = requiredUint32(properties, "tick");
+        snapshot.roundNumber = requiredUint32(properties, "roundNumber");
+        std::uint32_t playerCount = requiredUint32(properties, "player.count");
+        for (std::uint32_t i = 0; i < playerCount; ++i) {
+            PlayerSnapshot player;
+            player.playerId = requiredUint32(properties, indexedKey("player", i, "playerId"));
+            player.x = requiredFloat(properties, indexedKey("player", i, "x"));
+            player.y = requiredFloat(properties, indexedKey("player", i, "y"));
+            player.life = requiredFloat(properties, indexedKey("player", i, "life"));
+            player.alive = requiredBool(properties, indexedKey("player", i, "alive"));
+            snapshot.players.push_back(player);
+        }
+        return snapshot;
+    }
+
+    std::string serializeEvent(const Event &event) {
+        Properties properties;
+        set(properties, "eventId", std::to_string(event.eventId));
+        set(properties, "type", event.type);
+        set(properties, "payload", event.payload);
+        return serializeProperties(properties);
+    }
+
+    Event deserializeEvent(const std::string &payload) {
+        const Properties properties = parseProperties(payload);
+        Event event;
+        event.eventId = requiredUint32(properties, "eventId");
+        event.type = requiredString(properties, "type");
+        event.payload = requiredString(properties, "payload");
+        return event;
+    }
+
+    std::string serializeDisconnect(const Disconnect &disconnect) {
+        Properties properties;
+        set(properties, "reason", disconnect.reason);
+        set(properties, "canReconnect", disconnect.canReconnect ? "true" : "false");
+        return serializeProperties(properties);
+    }
+
+    Disconnect deserializeDisconnect(const std::string &payload) {
+        const Properties properties = parseProperties(payload);
+        Disconnect disconnect;
+        disconnect.reason = requiredString(properties, "reason");
+        disconnect.canReconnect = requiredBool(properties, "canReconnect");
+        return disconnect;
     }
 
     std::string serializeClientConnectionConfig(const ClientConnectionConfig &config) {

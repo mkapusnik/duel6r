@@ -70,6 +70,62 @@ D6R_TEST_CASE("Protocol deserialization rejects out-of-range unsigned integer fi
                       std::invalid_argument);
 }
 
+D6R_TEST_CASE("Protocol lobby state round-trips selected levels and player readiness") {
+    Duel6::Network::LobbyState state;
+    state.gameMode = "deathmatch";
+    state.maxRounds = 10;
+    state.assistance = true;
+    state.quickLiquid = false;
+    state.selectedLevels.push_back("levels/duel_24.json");
+    state.selectedLevels.push_back("levels/waterworks.json");
+    state.players.push_back({1, 7, "Player One", 2, true});
+    state.players.push_back({2, 8, "Player Two", 3, false});
+
+    Duel6::Network::LobbyState parsed = Duel6::Network::deserializeLobbyState(Duel6::Network::serializeLobbyState(state));
+
+    D6R_REQUIRE_EQ(state.gameMode, parsed.gameMode);
+    D6R_REQUIRE_EQ(state.maxRounds, parsed.maxRounds);
+    D6R_REQUIRE(parsed.assistance);
+    D6R_REQUIRE(!parsed.quickLiquid);
+    D6R_REQUIRE_EQ(2u, parsed.selectedLevels.size());
+    D6R_REQUIRE_EQ(std::string("levels/waterworks.json"), parsed.selectedLevels[1]);
+    D6R_REQUIRE_EQ(2u, parsed.players.size());
+    D6R_REQUIRE_EQ(std::string("Player One"), parsed.players[0].displayName);
+    D6R_REQUIRE_EQ(3, parsed.players[1].team);
+    D6R_REQUIRE(!parsed.players[1].ready);
+}
+
+D6R_TEST_CASE("Protocol snapshot, event, and disconnect messages round-trip") {
+    Duel6::Network::Snapshot snapshot;
+    snapshot.snapshotId = 12;
+    snapshot.baselineId = 10;
+    snapshot.tick = 420;
+    snapshot.roundNumber = 3;
+    snapshot.players.push_back({5, 12.5f, 99.25f, 80.0f, true});
+
+    Duel6::Network::Snapshot parsedSnapshot = Duel6::Network::deserializeSnapshot(Duel6::Network::serializeSnapshot(snapshot));
+    D6R_REQUIRE_EQ(12u, parsedSnapshot.snapshotId);
+    D6R_REQUIRE_EQ(420u, parsedSnapshot.tick);
+    D6R_REQUIRE_EQ(1u, parsedSnapshot.players.size());
+    D6R_REQUIRE_NEAR(12.5f, parsedSnapshot.players[0].x, 0.001f);
+    D6R_REQUIRE(parsedSnapshot.players[0].alive);
+
+    Duel6::Network::Event event;
+    event.eventId = 77;
+    event.type = "sound";
+    event.payload = "weapon/fire=plasma";
+    Duel6::Network::Event parsedEvent = Duel6::Network::deserializeEvent(Duel6::Network::serializeEvent(event));
+    D6R_REQUIRE_EQ(77u, parsedEvent.eventId);
+    D6R_REQUIRE_EQ(std::string("weapon/fire=plasma"), parsedEvent.payload);
+
+    Duel6::Network::Disconnect disconnect;
+    disconnect.reason = "server-shutdown";
+    disconnect.canReconnect = true;
+    Duel6::Network::Disconnect parsedDisconnect = Duel6::Network::deserializeDisconnect(Duel6::Network::serializeDisconnect(disconnect));
+    D6R_REQUIRE_EQ(std::string("server-shutdown"), parsedDisconnect.reason);
+    D6R_REQUIRE(parsedDisconnect.canReconnect);
+}
+
 D6R_TEST_CASE("Server command line parser supports local authoritative instance options") {
     char *argv[] = {
             mutableArg("duel6r-server"),
@@ -114,6 +170,28 @@ D6R_TEST_CASE("Headless server accepts compatible authenticated handshakes") {
     D6R_REQUIRE_EQ(1u, accept.clientId);
     D6R_REQUIRE_EQ(75u, accept.serverTickRate);
     D6R_REQUIRE_EQ(std::string("Test Server"), accept.serverName);
+}
+
+D6R_TEST_CASE("Headless server reports structured handshake rejection reasons") {
+    Duel6::Server::ServerConfig config;
+    config.authToken = "secret";
+    Duel6::Server::HeadlessServer server(config);
+
+    Duel6::Network::HandshakeRequest request;
+    request.protocolVersion = Duel6::Network::ProtocolVersion + 1;
+    request.authToken = "secret";
+
+    Duel6::Server::HandshakeResult result = server.validateHandshake(request);
+    D6R_REQUIRE(!result.accepted);
+    D6R_REQUIRE_EQ(static_cast<int>(Duel6::Network::RejectReason::IncompatibleProtocol),
+                   static_cast<int>(result.reject.reason));
+
+    request.protocolVersion = Duel6::Network::ProtocolVersion;
+    request.authToken = "wrong";
+    result = server.validateHandshake(request);
+    D6R_REQUIRE(!result.accepted);
+    D6R_REQUIRE_EQ(static_cast<int>(Duel6::Network::RejectReason::AuthenticationFailed),
+                   static_cast<int>(result.reject.reason));
 }
 
 D6R_TEST_CASE("Local game connection plan launches bundled server on loopback endpoint") {
